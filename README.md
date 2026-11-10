@@ -1,60 +1,60 @@
+<div align="center">
+
+<img src="apps/web/public/icon-512.png" alt="Casebook" width="96" />
+
 # Casebook
 
-Web app test case management dengan UI/UX yang sederhana dan cepat. Tulis test case di repository terstruktur, eksekusi lewat Test Run, kelompokkan dengan Test Plan dan Milestone, lalu pantau hasilnya lewat Dashboard dan Reports.
+**Test case management yang sederhana dan cepat.**
 
-> **Status: tahap perencanaan.** Repo ini baru berisi dokumen PRD dan arsitektur. Kode aplikasi belum dibuat, jadi belum ada langkah instalasi.
+Tulis test case, jalankan Test Run, lalu lihat hasilnya dalam satu tempat.
 
-## Dokumentasi
+![React](https://img.shields.io/badge/React_19-20232A?logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Firebase](https://img.shields.io/badge/Firebase-DD2C00?logo=firebase&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=white)
 
-| Dokumen | Isi |
+</div>
+
+---
+
+## ✨ Fitur
+
+- 📚 **Repository** — test case dalam section bertingkat, template Text dan Steps.
+- ✅ **Review** — hanya case yang sudah di-approve yang masuk Test Run.
+- ▶️ **Test Run** — isi Passed, Failed, Blocked, atau Retest langsung dari tabel.
+- 📸 **Evidence** — lampirkan screenshot lewat upload, drag & drop, atau paste.
+- 🎯 **Milestone** — pantau progres per rilis atau sprint.
+- 📊 **Dashboard & Reports** — ringkasan progres, ekspor ke PDF.
+
+## 🚀 Mulai
+
+Butuh Node 22+ dan pnpm.
+
+```bash
+pnpm install
+cp apps/web/.env.example apps/web/.env.local   # isi config Firebase dan URL Worker
+pnpm dev
+```
+
+| Perintah | Fungsi |
 | --- | --- |
-| [PRD](PRD%20%E2%80%94%20Casebook.md) | Tujuan produk, role & permission, kebutuhan fungsional, prinsip UI/UX, model data, dan lingkup MVP |
-| [Arsitektur](Arsitektur%20%E2%80%94%20Casebook.md) | Stack teknologi, security rules, struktur database, alur kunci, CI/CD, testing, keamanan, dan biaya |
+| `pnpm dev` | Jalankan web app |
+| `pnpm build` | Build production |
+| `pnpm test` | Jalankan semua test |
+| `pnpm test:rules` | Test Firestore rules di emulator |
 
-## Masalah yang Diselesaikan
+## 🧱 Stack
 
-- Test case tersebar di spreadsheet, wiki, atau tiket bug, sehingga sulit dicari, di-reuse, dan dilacak riwayatnya.
-- Tidak ada gambaran real-time tentang progres, kegagalan, dan pembagian tugas tester.
-- Sulit menjawab "apakah rilis ini siap?" karena hasil test tidak terhubung ke rilis atau sprint.
+**Web** React 19 · Vite · Tailwind CSS &nbsp;|&nbsp; **Data** Firebase Auth · Firestore &nbsp;|&nbsp; **API** Cloudflare Workers · Hono &nbsp;|&nbsp; **Hosting** Cloudflare Pages
 
-## Fitur Utama (MVP)
-
-- **Test Case Repository:** section bertingkat, template Text dan Steps, quick add, filter, dan bulk action.
-- **Review & Approval:** case baru berstatus Under Review, dan hanya case yang di-approve Lead yang bisa masuk Test Run.
-- **Test Run:** status Passed, Failed, Blocked, atau Retest bisa diisi langsung dari tabel. Run yang ditutup terkunci sebagai arsip.
-- **Evidence:** screenshot bisa dilampirkan lewat upload, drag & drop, atau paste, dan dikompres otomatis di browser.
-- **Test Plan & Milestone:** beberapa run bisa dikelompokkan, dan progresnya dipantau per rilis atau sprint.
-- **Dashboard & Reports:** To-do pribadi, progres per project, dan report Summary yang bisa diekspor ke PDF dan CSV.
-- **Role per project:** Admin, Lead, Tester, dan Viewer.
-
-Di luar lingkup fase awal: bug tracker, tool otomasi test, dan ALM lengkap. Daftar kebutuhan lengkap beserta prioritas P0, P1, dan P2 ada di PRD.
-
-## Stack Teknologi
-
-Semua layanan memakai paket gratis, tanpa kartu kredit.
-
-| Area | Teknologi |
-| --- | --- |
-| Frontend | React 19, Vite, TypeScript, shadcn/ui, Tailwind CSS |
-| Hosting | Cloudflare Pages |
-| Auth & database | Firebase Authentication dan Cloud Firestore (paket Spark) |
-| Aturan bisnis | Firestore Security Rules |
-| Server kecil | Cloudflare Workers + Hono |
-| Evidence gambar | Cloudinary |
-| Monorepo | pnpm + Turborepo |
-| CI/CD | GitHub Actions |
-| Testing | Vitest, `@firebase/rules-unit-testing`, Playwright |
-
-## Rencana Struktur Repo
+## 📁 Struktur
 
 ```
-casebook/
-  apps/
-    web/            # React SPA (Cloudflare Pages)
-    worker/         # Cloudflare Worker
-  packages/
-    shared/         # schema Zod, tipe domain, enum status, konstanta permission
-  firebase/         # security rules dan index Firestore
-  scripts/          # backup Firestore, pembersihan evidence yatim
-  e2e/              # Playwright
+apps/web/      React SPA
+apps/worker/   Cloudflare Worker
+firebase/      Security rules dan index Firestore
 ```
+
+## 📖 Dokumen
+
+[PRD](prd.md) · [Arsitektur](architecture.md) · [Design](design.md)
