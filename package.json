@@ -1,0 +1,19 @@
+{
+  "name": "casebook",
+  "private": true,
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "typecheck": "pnpm --filter web typecheck",
+    "test": "pnpm -r test",
+    "test:rules": "pnpm --filter web test:rules",
+    "test:coverage": "pnpm -r test:coverage"
+  },
+  "devDependencies": {
+    "firebase-tools": "^15.35.0"
+  }
+}

@@ -1,0 +1,215 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function signedIn() { return request.auth != null; }
+    function validPins() {
+      return !('pinnedProjectIds' in request.resource.data)
+        || (request.resource.data.pinnedProjectIds is list && request.resource.data.pinnedProjectIds.size() <= 500);
+    }
+    function validProject() {
+      let p = request.resource.data;
+      return p.keys().hasOnly(['workspaceId', 'name', 'description', 'color', 'createdBy', 'createdAt', 'nextCaseNumber'])
+        && p.get('nextCaseNumber', 1) is int && p.get('nextCaseNumber', 1) >= 1
+        && p.name is string && p.name.size() >= 1 && p.name.size() <= 120
+        && p.description is string && p.description.size() <= 500
+        && p.color is string && p.color.matches('^#[0-9A-Fa-f]{6}$');
+    }
+
+    // Daftar workspace statis (PRD 3); harus sama dengan apps/web/src/lib/workspaces.ts.
+    function validWorkspace(id) { return id in ['alpha-qa', 'beta-squad', 'gamma-labs']; }
+    function myWorkspace() { return get(/databases/$(db)/documents/users/$(request.auth.uid)).data.workspaceId; }
+
+    // Profil ringkas: menunjuk workspace milik user dan menyimpan pin-nya.
+    // workspaceId hanya diisi sekali saat Register; setelah itu tidak bisa diubah.
+    match /users/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'workspaceId', 'pinnedProjectIds'])
+        && (!('workspaceId' in request.resource.data) || validWorkspace(request.resource.data.workspaceId))
+        && validPins();
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinnedProjectIds'])
+        && validPins();
+    }
+
+    // Semua user dalam satu workspace berbagi project; workspace lain tidak bisa membaca atau menulisnya.
+    match /projects/{project} {
+      allow read, delete: if signedIn() && resource.data.workspaceId == myWorkspace();
+      allow create: if signedIn() && validProject()
+        && request.resource.data.workspaceId == myWorkspace()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && validProject()
+        && resource.data.workspaceId == myWorkspace()
+        && request.resource.data.workspaceId == resource.data.workspaceId
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      // Milestone mengikuti workspace project induknya (architecture.md 6).
+      function inMyWorkspace() { return get(/databases/$(db)/documents/projects/$(project)).data.workspaceId == myWorkspace(); }
+      function validMilestone() {
+        let m = request.resource.data;
+        return m.keys().hasOnly(['name', 'description', 'startOn', 'dueOn', 'isCompleted', 'completedOn', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+          && m.name is string && m.name.size() >= 1 && m.name.size() <= 120
+          && m.description is string && m.description.size() <= 500
+          && m.dueOn is string && m.dueOn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && m.startOn is string && (m.startOn == '' || (m.startOn.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') && m.startOn <= m.dueOn))
+          && m.isCompleted is bool
+          && m.get('completedOn', '') is string
+          && (m.isCompleted ? m.get('completedOn', '').matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') : m.get('completedOn', '') == '')
+          && m.updatedBy == request.auth.uid && m.updatedAt == request.time;
+      }
+
+      match /milestones/{milestone} {
+        allow read, delete: if signedIn() && inMyWorkspace();
+        allow create: if signedIn() && inMyWorkspace() && validMilestone()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+        allow update: if signedIn() && inMyWorkspace() && validMilestone()
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      // Section = pohon folder case (parentId null = akar). Case di section yang dihapus ikut dihapus oleh client.
+      match /sections/{section} {
+        allow read, delete: if signedIn() && inMyWorkspace();
+        allow create, update: if signedIn() && inMyWorkspace()
+          && request.resource.data.keys().hasOnly(['name', 'parentId'])
+          && request.resource.data.name is string && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 120
+          && (request.resource.data.parentId == null || request.resource.data.parentId is string);
+      }
+
+      // Case: id dokumen = "C{number}"; nomor diambil dari projects.nextCaseNumber di transaksi yang sama.
+      // shortcut: rules tidak memeriksa alur status (Draft -> Under Review -> Active) dan history; cukup untuk satu workspace tepercaya.
+      function validCase() {
+        let c = request.resource.data;
+        return c.keys().hasOnly(['number', 'sectionId', 'title', 'status', 'priority', 'type', 'refs', 'estimate', 'automation', 'preconditions', 'steps', 'expected', 'author', 'reviewer', 'history', 'createdBy', 'createdAt', 'updatedAt'])
+          && c.number is int && c.sectionId is string
+          && c.title is string && c.title.size() >= 1 && c.title.size() <= 200
+          && c.status in ['draft', 'under_review', 'active']
+          && c.priority in ['High', 'Medium', 'Low']
+          && c.type in ['Functional', 'Regression', 'UI', 'Smoke']
+          && c.refs is string && c.estimate is string && c.automation in ['Manual', 'Automated']
+          && c.preconditions is list && c.steps is list && c.expected is list && c.history is list
+          && c.author is string && (c.reviewer == null || c.reviewer is map)
+          && c.updatedAt == request.time;
+      }
+
+      match /cases/{caseId} {
+        allow read, delete: if signedIn() && inMyWorkspace();
+        allow create: if signedIn() && inMyWorkspace() && validCase()
+          && caseId == 'C' + string(request.resource.data.number)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+        allow update: if signedIn() && inMyWorkspace() && validCase()
+          && request.resource.data.number == resource.data.number
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      // Test plan (PLAN-01): wadah beberapa run dalam satu milestone; status dan progres dihitung client dari run-nya.
+      match /plans/{plan} {
+        allow read, delete: if signedIn() && inMyWorkspace();
+        allow create, update: if signedIn() && inMyWorkspace()
+          && request.resource.data.keys().hasOnly(['name', 'milestoneId', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+          && request.resource.data.name is string && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 120
+          && request.resource.data.milestoneId is string
+          && exists(/databases/$(db)/documents/projects/$(project)/milestones/$(request.resource.data.milestoneId))
+          && request.resource.data.updatedBy == request.auth.uid && request.resource.data.updatedAt == request.time
+          && (resource == null
+            ? request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time
+            : request.resource.data.createdBy == resource.data.createdBy && request.resource.data.createdAt == resource.data.createdAt);
+      }
+
+      // Run: milestoneId boleh null (milestone tidak wajib); bila diisi, milestone-nya harus ada di project ini.
+      // planId bila diisi harus plan di milestone yang sama.
+      function validCounts(c) {
+        return c.keys().hasOnly(['passed', 'failed', 'blocked', 'retest', 'untested']) && c.size() == 5
+          && c.passed is int && c.passed >= 0 && c.failed is int && c.failed >= 0 && c.blocked is int && c.blocked >= 0
+          && c.retest is int && c.retest >= 0 && c.untested is int && c.untested >= 0;
+      }
+      function validRun() {
+        let r = request.resource.data;
+        return r.keys().hasOnly(['name', 'description', 'milestoneId', 'planId', 'assignee', 'status', 'counts', 'startedAt', 'doneAt', 'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+          && r.name is string && r.name.size() >= 1 && r.name.size() <= 120
+          && r.description is string && r.description.size() <= 500
+          && (r.milestoneId == null || (r.milestoneId is string && exists(/databases/$(db)/documents/projects/$(project)/milestones/$(r.milestoneId))))
+          && (r.planId == null || (r.planId is string && get(/databases/$(db)/documents/projects/$(project)/plans/$(r.planId)).data.milestoneId == r.milestoneId))
+          && r.assignee is string
+          && r.status in ['draft', 'active', 'done']
+          && validCounts(r.counts)
+          && r.updatedBy == request.auth.uid && r.updatedAt == request.time;
+      }
+      // RUN-10: Done hanya bila tidak ada test Untested/Retest; Active lagi hanya bila masih ada; Draft tidak bisa dikembalikan.
+      function validRunStatus() {
+        let from = resource.data.status;
+        let to = request.resource.data.status;
+        let c = request.resource.data.counts;
+        let finished = c.untested == 0 && c.retest == 0;
+        return (to == 'draft' && from == 'draft')
+          || (to == 'active' && (from == 'draft' || !finished))
+          || (to == 'done' && from != 'draft' && finished);
+      }
+
+      // Jumlah hasil per hari untuk grafik Overview, dinaikkan +1 di transaksi yang sama dengan hasil baru.
+      // shortcut: rules tidak bisa memastikan +1 ini berpasangan dengan dokumen result; cukup untuk satu workspace tepercaya.
+      function dailyCount(d, k) { return d.get(k, 0); }
+      function bumpedOnce(before) {
+        let d = request.resource.data;
+        let keys = ['passed', 'failed', 'blocked', 'retest'];
+        return d.keys().hasOnly(keys)
+          && dailyCount(d, 'passed') is int && dailyCount(d, 'failed') is int
+          && dailyCount(d, 'blocked') is int && dailyCount(d, 'retest') is int
+          && dailyCount(d, 'passed') >= dailyCount(before, 'passed') && dailyCount(d, 'failed') >= dailyCount(before, 'failed')
+          && dailyCount(d, 'blocked') >= dailyCount(before, 'blocked') && dailyCount(d, 'retest') >= dailyCount(before, 'retest')
+          && dailyCount(d, 'passed') + dailyCount(d, 'failed') + dailyCount(d, 'blocked') + dailyCount(d, 'retest')
+            == dailyCount(before, 'passed') + dailyCount(before, 'failed') + dailyCount(before, 'blocked') + dailyCount(before, 'retest') + 1;
+      }
+
+      match /daily/{day} {
+        allow read: if signedIn() && inMyWorkspace();
+        allow create: if signedIn() && inMyWorkspace() && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') && bumpedOnce({});
+        allow update: if signedIn() && inMyWorkspace() && bumpedOnce(resource.data);
+      }
+
+      match /runs/{run} {
+        function runStatus() { return get(/databases/$(db)/documents/projects/$(project)/runs/$(run)).data.status; }
+
+        allow read, delete: if signedIn() && inMyWorkspace();
+        allow create: if signedIn() && inMyWorkspace() && validRun()
+          && request.resource.data.status == 'draft'
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+        allow update: if signedIn() && inMyWorkspace() && validRun() && validRunStatus()
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt;
+
+        // Test boleh ditambah/dilepas selama run ada (Edit run); sesudah dibuat hanya status/hasil terakhir yang berubah.
+        // Melepas test ikut menghapus hasilnya, dan case yang dihapus dari Test Cases dilepas dari semua run.
+        match /tests/{test} {
+          allow read: if signedIn() && inMyWorkspace();
+          allow create: if signedIn() && inMyWorkspace() && exists(/databases/$(db)/documents/projects/$(project)/runs/$(run))
+            && request.resource.data.keys().hasOnly(['number', 'caseId', 'sectionId', 'sectionOrder', 'assignee', 'status', 'snapshot'])
+            && request.resource.data.status == 'untested'
+            && request.resource.data.snapshot is map;
+          allow update: if signedIn() && inMyWorkspace() && runStatus() != 'draft'
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'lastResultAt', 'lastResultBy'])
+            && request.resource.data.status in ['passed', 'failed', 'blocked', 'retest']
+            && request.resource.data.lastResultBy == request.auth.uid && request.resource.data.lastResultAt == request.time;
+          allow delete: if signedIn() && inMyWorkspace();
+
+          // Hasil append-only: tidak bisa diubah, dihapus hanya bersama test atau run-nya.
+          match /results/{result} {
+            allow read: if signedIn() && inMyWorkspace();
+            allow create: if signedIn() && inMyWorkspace() && runStatus() in ['active', 'done']
+              && request.resource.data.keys().hasOnly(['status', 'comment', 'createdBy', 'createdAt'])
+              && request.resource.data.status in ['passed', 'failed', 'blocked', 'retest']
+              && request.resource.data.comment is string && request.resource.data.comment.size() <= 2000
+              && request.resource.data.createdBy == request.auth.uid && request.resource.data.createdAt == request.time;
+            allow delete: if signedIn() && inMyWorkspace();
+          }
+        }
+      }
+    }
+  }
+}
