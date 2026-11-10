@@ -5,6 +5,6 @@ compatibility_date = "2025-01-01"
 [vars]
 FIREBASE_PROJECT_ID = "casebook-67efe"
 # Origin web prod yang boleh memanggil API; dev lokal override lewat .dev.vars.
-ALLOWED_ORIGIN = "https://casebook.pages.dev"
+ALLOWED_ORIGIN = "https://casebook-1qd.pages.dev"
 
 # Secret (wrangler secret put): SERVICE_ACCOUNT_JSON
