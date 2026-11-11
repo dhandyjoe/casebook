@@ -1,23 +1,20 @@
 import type { Project } from './api'
 
-const row = (id: string, name: string, description: string, color: string): Project =>
-  ({ id, name, description, color })
+const row = (id: string, name: string, description: string, color: string, pinned = false): Project =>
+  ({ id, name, description, color, pinned })
 
 const SEED = [
-  row('store', 'Online Store — Web', 'Checkout and payments for the web shop', '#E08A00'),
-  row('mobile', 'Mobile App', 'iOS and Android client', '#0F766E'),
-  row('admin', 'Admin Back-office', 'Internal tools', '#6D28D9'),
-  row('payments', 'Payments API', 'Smoke API v2', '#2B6CB0'),
+  row('store', 'Online Store — Web', 'Checkout and payments for the web shop', '#E08A00', true),
+  row('mobile', 'Mobile App', 'iOS and Android client', '#0F766E', true),
+  row('admin', 'Admin Back-office', 'Internal tools', '#6D28D9', true),
+  row('payments', 'Payments API', 'Smoke API v2', '#2B6CB0', true),
   row('seller', 'Seller Portal', 'Seller onboarding', '#0F766E'),
 ]
-const SEED_PINNED = ['store', 'mobile', 'admin', 'payments']
 
 let projects: Project[] = []
-let pinned: string[] = []
 
 export function resetFakeProjects() {
-  projects = [...SEED]
-  pinned = [...SEED_PINNED]
+  projects = SEED.map((p) => ({ ...p }))
   fake.created = []
 }
 
@@ -39,9 +36,8 @@ export const fakeApi = {
     fake.created.push({ uid, ...input })
     projects.push(row(`p${projects.length + 1}`, input.name, input.description, '#2B6CB0'))
   },
-  listPinned: async (_uid: string) => [...pinned],
-  setPinned: async (_uid: string, id: string, on: boolean) => {
+  setPinned: async (id: string, on: boolean) => {
     maybeFail('pin')
-    pinned = on ? [...pinned, id] : pinned.filter((x) => x !== id)
+    projects = projects.map((p) => (p.id === id ? { ...p, pinned: on } : p))
   },
 }

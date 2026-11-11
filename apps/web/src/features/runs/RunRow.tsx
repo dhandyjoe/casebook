@@ -76,7 +76,7 @@ export function RunRow({ projectId, run, people, sectionCount, inPlan = false }:
 
 export type Filter = 'all' | RunStatus
 
-/** Tab filter status run + legenda arti status (design.md Test Runs). */
+/** Tab filter status run (design.md Test Runs). */
 export function RunFilterBar({ filter, onChange, total, count }: { filter: Filter; onChange: (f: Filter) => void; total: number; count: (s: RunStatus) => number }) {
   const { t } = useTranslation()
   return (
@@ -94,11 +94,6 @@ export function RunFilterBar({ filter, onChange, total, count }: { filter: Filte
             </button>
           )
         })}
-      </div>
-      <div className="flex flex-wrap gap-3.5 text-xs text-ink-muted">
-        {(['draft', 'active', 'done'] as const).map((s) => (
-          <span key={s} className="flex items-center gap-1.5"><RunStatusChip status={s} small={false} />{t(`runs.list.hint${s[0]!.toUpperCase()}${s.slice(1)}`)}</span>
-        ))}
       </div>
     </div>
   )

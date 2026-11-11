@@ -87,23 +87,26 @@ describe('Milestones page', () => {
     expect(screen.getByText('Start date must be on or before the due date.')).toBeInTheDocument()
   })
 
-  it('completes and reopens a milestone, and completed ones leave the run dialog', async () => {
+  it('completes a milestone, locks it, and completed ones leave the run dialog', async () => {
     const user = userEvent.setup()
     renderApp('/p/store/milestones')
     await user.click(await screen.findByRole('button', { name: 'Mark as complete' }))
     // tab Open tidak lagi memuat Release 3.2, jadi pindah ke tab Completed
     await user.click(screen.getByRole('radio', { name: /Completed/ }))
-    expect(await screen.findByRole('button', { name: 'Reopen' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Release 3.2' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reopen' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Mark as complete' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('link', { name: 'Test Runs & Results' }))
     await user.click(await screen.findByRole('button', { name: 'Test Run' }))
     const options = within(within(await screen.findByRole('dialog', { name: 'Add Test Run' })).getByLabelText(/^Milestone/)).getAllByRole('option')
     expect(options.map((o) => o.textContent)).toEqual(['No milestone', 'Release 3.3'])
     await user.click(screen.getByRole('button', { name: 'Cancel' }))
-    await user.click(screen.getByRole('link', { name: 'Milestones' }))
-    await user.click(await screen.findByRole('radio', { name: /Completed/ }))
-    await user.click(await screen.findByRole('button', { name: 'Reopen' }))
-    await user.click(screen.getByRole('radio', { name: /Open/ }))
-    expect(await screen.findByRole('button', { name: 'Mark as complete' })).toBeInTheDocument()
+  })
+
+  it('opens the milestone given in ?m=, even when it is completed', async () => {
+    renderApp("/p/store/milestones?m=m2")
+    expect(await screen.findByRole('heading', { level: 2, name: 'Release 3.3' })).toBeInTheDocument()
   })
 
   it('deletes only a milestone no run uses', async () => {

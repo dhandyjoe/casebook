@@ -1,6 +1,6 @@
 import { seed, resetFirestore, ts } from '@/lib/fakeFirestore'
 import { emptyCounts } from '@/features/runs/domain'
-import { SHOWN, loadDashboard } from './api'
+import { loadDashboard } from './api'
 
 vi.mock('firebase/firestore', () => import('@/lib/fakeFirestore'))
 vi.unmock('@/features/cases/api')
@@ -37,11 +37,25 @@ it('aggregates stats from started runs, review queue and activity across project
 })
 
 it('keeps only the newest activity items', async () => {
-  for (let i = 0; i < SHOWN + 2; i++) {
+  for (let i = 0; i < 7; i++) {
     const at = `2026-11-0${i + 1}T00:00:00.000Z`
     seed(`projects/p1/cases/C${i}`, kase(`Case ${i}`, 'draft', [{ who: 'Rina', action: 'edited', at }], at))
   }
   const { activity } = await loadDashboard([store])
   // per project hanya 5 case terbaru yang dibaca
-  expect(activity.map((a) => a.title)).toEqual(['Case 7', 'Case 6', 'Case 5', 'Case 4', 'Case 3'])
+  expect(activity.map((a) => a.title)).toEqual(['Case 6', 'Case 5', 'Case 4', 'Case 3', 'Case 2'])
+})
+
+it('caps activity at 20 items across projects, newest first', async () => {
+  const projects = [1, 2, 3, 4, 5].map((n) => ({ id: `p${n}`, name: `P${n}`, color: '#000000' }))
+  projects.forEach((p, n) => {
+    for (let i = 0; i < 5; i++) {
+      const at = `2026-11-${String(n * 5 + i + 1).padStart(2, '0')}T00:00:00.000Z`
+      seed(`projects/${p.id}/cases/C${i}`, kase(`${p.id}-${i}`, 'draft', [{ who: 'Rina', action: 'edited', at }], at))
+    }
+  })
+  const { activity } = await loadDashboard(projects)
+  expect(activity).toHaveLength(20)
+  expect(activity[0]!.title).toBe('p5-4')
+  expect(activity.at(-1)!.title).toBe('p2-0')
 })

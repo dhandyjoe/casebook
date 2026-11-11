@@ -4,7 +4,7 @@ import { renderApp } from '@/test-utils'
 import { useCasesStore } from '@/features/cases/store'
 import { seedFakeCases } from '@/features/cases/testing'
 import { fakeApi as fakeMilestones } from '@/features/milestones/testing'
-import { fakeApi as fakeRuns } from './testing'
+import { addFakePlan, fakeApi as fakeRuns } from './testing'
 import { useRunsStore } from './store'
 
 const run = (name: string) => useRunsStore.getState().runs.find((r) => r.name === name)!
@@ -175,17 +175,11 @@ describe('Test Runs & Plans', () => {
     expect(useRunsStore.getState().runs.find((r) => r.name === 'Loose run')?.milestoneId).toBeNull()
   })
 
-  it('Add Test Plan creates a plan that shows even before it has runs', async () => {
+  it('has no button to add a Test Plan, and no status legend', async () => {
     renderApp('/p/store/runs')
-    await userEvent.click(await screen.findByRole('button', { name: 'Test Plan' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Add Test Plan' })
-    expect(within(dialog).getByRole('button', { name: 'Create plan' })).toBeDisabled()
-    await userEvent.type(within(dialog).getByLabelText(/^Plan name/), 'Regression Release 3.3')
-    await userEvent.selectOptions(within(dialog).getByLabelText('Milestone'), 'Release 3.3')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Create plan' }))
-    const r33 = within(await screen.findByRole('region', { name: 'Release 3.3' }))
-    expect(r33.getByText('Regression Release 3.3')).toBeInTheDocument()
-    expect(r33.getByText('No runs yet')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Test Run' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Test Plan' })).not.toBeInTheDocument()
+    expect(screen.queryByText('all tests have a final result')).not.toBeInTheDocument()
   })
 
   it('a project without runs shows the empty state', async () => {
@@ -231,17 +225,15 @@ describe('Test Runs & Plans', () => {
     expect(await screen.findByRole('heading', { level: 2, name: seeded.title })).toBeInTheDocument()
   })
 
-  it('a Firestore project saves a test plan and a run inside it', async () => {
+  it('a Firestore project saves a run inside an existing test plan', async () => {
     const { client } = renderApp('/p/mobile/runs')
     const seeded = useCasesStore.getState().cases.find((c) => c.status === 'active')!
     seedFakeCases('mobile', { cases: [seeded], sections: useCasesStore.getState().sections })
     await fakeMilestones.createMilestone('u1', 'mobile', { name: 'Sprint 9', description: '', startOn: '', dueOn: '2026-12-01' })
+    const [sprint9] = await fakeMilestones.listMilestones('mobile')
+    addFakePlan('mobile', { id: 'fp1', name: 'Regression', milestoneId: sprint9!.id })
     await client.invalidateQueries()
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Test Plan' }))
-    const planDialog = await screen.findByRole('dialog', { name: 'Add Test Plan' })
-    await userEvent.type(within(planDialog).getByLabelText(/^Plan name/), 'Regression')
-    await userEvent.click(within(planDialog).getByRole('button', { name: 'Create plan' }))
     const sprint = within(await screen.findByRole('region', { name: 'Sprint 9' }))
     expect(sprint.getByText('Regression')).toBeInTheDocument()
     expect(sprint.getByText('No runs yet')).toBeInTheDocument()

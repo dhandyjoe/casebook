@@ -21,5 +21,9 @@ export const initAuth = () =>
     }
     const workspaceId = await loadWorkspaceId(user.uid)
     // User bisa sudah berganti atau keluar selama workspace dibaca.
-    if (auth.currentUser?.uid === user.uid) useAuth.setState({ session: toSession(user, workspaceId), ready: true })
+    if (auth.currentUser?.uid !== user.uid) return
+    // Saat Register, listener ini bisa membaca users/{uid} sebelum ditulis; jangan timpa sesi dari RegisterForm.
+    const current = useAuth.getState().session
+    if (!workspaceId && current?.uid === user.uid && current.workspaceId) return useAuth.setState({ ready: true })
+    useAuth.setState({ session: toSession(user, workspaceId), ready: true })
   })

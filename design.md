@@ -235,7 +235,7 @@ Kartu biasa **tidak** memakai bayangan; cukup border `--cb-border`.
 
 ### 6.1 App shell
 
-- **Top bar** navy `#1A3651`, tinggi ±58 (padding 10 × 24), tanpa border. Isi: logo (kotak aksen + teks putih), chip nama workspace aktif (read-only), project switcher (border `#2A4A6B`, teks putih), search global (latar `#EAF0F6`, maks. 380, shortcut `/`), tombol notifikasi (border `#2A4A6B`, ikon `#E4ECF3`), avatar.
+- **Top bar** navy `#1A3651`, tinggi ±58 (padding 10 × 24), tanpa border. Isi: logo (kotak aksen + teks putih), chip nama workspace aktif (read-only), project switcher (border `#2A4A6B`, teks putih), search global (latar `#EAF0F6`, maks. 380, shortcut `/`; mencari project, milestone, test run, dan test case dengan dropdown saran), avatar.
 - **Tab project** di pita navy yang sama, dipisah garis atas `#2A4A6B`: OVERVIEW · TO-DO · MILESTONES · TEST RUNS & RESULTS · TEST CASES · REPORTS. Teks 13/600 UPPERCASE, letter-spacing 0.06em, `#B8C7D6`; tab aktif putih 700 + garis bawah 3 px putih.
 - **Latar halaman** `#EAF0F6`; kartu dan panel isi putih di atasnya.
 - **Panel samping** (pohon section, folder, template report) `#D2DEEA` dengan border kanan `#C3D3E2`.
@@ -283,10 +283,10 @@ Kartu biasa **tidak** memakai bayangan; cukup border `--cb-border`.
 | Varian | Tampilan | Contoh |
 | --- | --- | --- |
 | Primary | Latar aksen, teks putih 600, tanpa border | Sign in, Create & start run, Save & next test |
-| Secondary (outline) | Putih, border `#D5D9E0`, teks `#16181D` 600 | Save as Draft, Copy link, Edit run, Review |
+| Secondary (outline) | Putih, border `#D5D9E0`, teks `#16181D` 600 | Save as Draft, Edit run, Review |
 | Ghost | Transparan, teks `#3A3F4A` 600 | Cancel, Clear |
 | Icon | 38×38, border `#E3E6EB`, radius 8 | Notifikasi |
-| Destruktif | Latar `#B42323`, teks putih 600 (6.6:1); nonaktif `#D9A3A3` sampai catatan diisi | Return to Draft, Delete |
+| Destruktif | Latar `#B42323`, teks putih 600 (6.6:1); nonaktif `#D9A3A3` | Delete |
 
 - Tinggi 40 (default), 30–32 (kecil). Padding horizontal 14–16. Ikon 16 di kiri, gap 8.
 - Disabled: primary `#A7BFD8`, secondary teks `#8A93A3`; selalu sertakan alasan di dekatnya.

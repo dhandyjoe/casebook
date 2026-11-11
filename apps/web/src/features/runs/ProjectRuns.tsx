@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Check, Layers, Plus } from 'lucide-react'
+import { Check, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ProjectShell } from '@/components/layout/ProjectShell'
@@ -9,8 +9,7 @@ import { useMilestones } from '@/features/milestones/hooks'
 import { useUsers } from '@/features/people/useUsers'
 import type { useProject } from '@/features/projects/hooks'
 import { daysUntil, formatDate, relativeTime } from '@/lib/time'
-import { useCreatePlan, useCreateRun, usePlans, useRuns } from './hooks'
-import { PlanDialog } from './PlanDialog'
+import { useCreateRun, usePlans, useRuns } from './hooks'
 import { RunDialog } from './RunDialog'
 import { MilestoneSection, PlanRow, RunFilterBar, RunRow, type Filter } from './RunRow'
 import { initialsOf, sumCounts, totalOf, type RunStatus } from './domain'
@@ -27,8 +26,7 @@ export function ProjectRuns({ project }: { project: NonNullable<ReturnType<typeo
   const plans = usePlans(project.id).data ?? []
   const users = useUsers(runs.length > 0).data
   const create = useCreateRun(project.id)
-  const createPlan = useCreatePlan(project.id)
-  const [open, setOpen] = useState<'run' | 'plan' | null>(null)
+  const [open, setOpen] = useState<'run' | null>(null)
   const [filter, setFilter] = useState<Filter>('all')
 
   const count = (s: RunStatus) => runs.filter((r) => r.status === s).length
@@ -59,9 +57,6 @@ export function ProjectRuns({ project }: { project: NonNullable<ReturnType<typeo
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" aria-haspopup="dialog" onClick={() => setOpen('plan')} className="flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-3.5 font-semibold text-ink">
-              <Layers size={16} aria-hidden="true" />{t('runs.list.addPlan')}
-            </button>
             <button type="button" aria-haspopup="dialog" onClick={() => setOpen('run')} className="flex h-10 cursor-pointer items-center gap-2 rounded-md border-0 bg-accent px-4 font-semibold text-white hover:bg-accent-hover">
               <Plus size={16} strokeWidth={2.2} aria-hidden="true" />{t('runs.list.addRun')}
             </button>
@@ -129,10 +124,6 @@ export function ProjectRuns({ project }: { project: NonNullable<ReturnType<typeo
         open={open === 'run'} projectName={project.name} milestones={milestones} plans={plans} cases={cases} sections={sections}
         me={me} saving={create.isPending} failed={create.isError} onClose={() => { create.reset(); setOpen(null) }} onSave={() => undefined}
         onCreate={(input) => create.mutate(input, { onSuccess: () => setOpen(null), onError: (e) => console.error(e) })}
-      />
-      <PlanDialog
-        open={open === 'plan'} projectName={project.name} milestones={milestones.filter((m) => !m.isCompleted)} onClose={() => setOpen(null)}
-        onCreate={(input) => createPlan.mutate(input, { onSuccess: () => { setFilter('all'); setOpen(null) }, onError: (e) => console.error(e) })}
       />
     </ProjectShell>
   )

@@ -38,7 +38,8 @@ export function CasesPage() {
   const panes = usePaneSizes(layout, CASE_PANES)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [dialog, setDialog] = useState<'add' | 'edit' | 'move' | 'copy' | 'delete' | 'deleteSection' | 'review' | null>(null)
-  const [reviewId, setReviewId] = useState<string>()
+  // Case yang akan dikirim ke review: satu dari panel detail, atau semua Draft terpilih dari bulk bar.
+  const [review, setReview] = useState<{ ids: string[]; bulk: boolean }>({ ids: [], bulk: false })
   const users = useUsers(dialog === 'review')
   const me: Person = { uid: session.uid, name: session.name }
 
@@ -81,12 +82,14 @@ export function CasesPage() {
     if (!created) return
     const inView = sectionId === 'all' || sectionWithDescendants(sections, sectionId).has(created.sectionId)
     void go({ section: inView ? sectionId : created.sectionId, status: undefined, case: created.id }, { resetScroll: false })
-    if (input.status === 'under_review') openReview(created.id)
+    if (input.status === 'under_review') openReview([created.id])
   }
-  const openReview = (id: string) => { setReviewId(id); setDialog('review') }
+  const openReview = (ids: string[], bulk = false) => { setReview({ ids, bulk }); setDialog('review') }
   const clear = () => setChecked(new Set())
 
   const toApprove = checkedVisible.filter((c) => canReview(c, session.uid))
+  // Kirim ke review hanya bila semua case terpilih masih Draft.
+  const canSubmit = checkedVisible.every((c) => c.status === 'draft')
   const editing = dialog === 'edit' ? selected : undefined
 
   return (
@@ -154,6 +157,10 @@ export function CasesPage() {
                 <span className="mr-1.5 font-semibold">{t('cases.bulk.selected', { count: checkedVisible.length })}</span>
                 <BulkButton onClick={() => setDialog('move')}>{t('cases.bulk.move')}</BulkButton>
                 <BulkButton onClick={() => setDialog('copy')}>{t('cases.bulk.copy')}</BulkButton>
+                <BulkButton aria-haspopup="dialog" disabled={!canSubmit} title={canSubmit ? undefined : t('cases.bulk.sendReviewNone')}
+                  onClick={() => openReview(checkedVisible.map((c) => c.id), true)}>
+                  {t('cases.bulk.sendReview')}
+                </BulkButton>
                 <BulkButton disabled={toApprove.length === 0} title={toApprove.length === 0 ? t('cases.bulk.approveNone') : undefined}
                   onClick={() => { store.approveCases(toApprove.map((c) => c.id), me); clear() }}>
                   {t('cases.bulk.approve')}
@@ -183,9 +190,8 @@ export function CasesPage() {
               key={selected.id}
               testCase={selected} sectionPath={sectionPath(sections, selected.sectionId)} userName={session.name} userUid={session.uid}
               onPrev={() => step(-1)} onNext={() => step(1)} onEdit={() => setDialog('edit')}
-              onSubmit={() => openReview(selected.id)}
+              onSubmit={() => openReview([selected.id])}
               onApprove={() => store.approveCases([selected.id], me)}
-              onReturn={(note) => store.returnCase(selected.id, note, me)}
             />
           ) : (
             <section className="box-border flex min-w-0 flex-[4_1_520px] items-center justify-center border-l border-border bg-surface p-10 text-center text-ink-muted lg:w-[var(--detail-w)] lg:flex-none">
@@ -206,11 +212,13 @@ export function CasesPage() {
         }}
       />
       <SendReviewDialog
-        key={reviewId} open={dialog === 'review'} users={users.data ?? []} loading={users.isPending && users.fetchStatus !== 'idle'} failed={users.isError} meUid={session.uid}
+        key={review.ids.join()} count={review.ids.length} open={dialog === 'review'} users={users.data ?? []} loading={users.isPending && users.fetchStatus !== 'idle'} failed={users.isError} meUid={session.uid}
         onClose={() => setDialog(null)}
-        onSend={(reviewer) => { if (reviewId) store.submit(reviewId, session.name, reviewer); setDialog(null) }}
+        onSend={(reviewer) => { store.submit(review.ids, session.name, reviewer); if (review.bulk) clear(); setDialog(null) }}
       />
       <MoveDialog
+        // remount tiap dibuka: pilihan, pencarian, dan folder tertutup tidak terbawa dari sesi sebelumnya
+        key={dialog === 'move' || dialog === 'copy' ? dialog : 'closed'}
         mode={dialog === 'copy' ? 'copy' : 'move'} open={dialog === 'move' || dialog === 'copy'} count={checkedVisible.length} sections={sections} onClose={() => setDialog(null)}
         onMove={(target) => {
           const ids = checkedVisible.map((c) => c.id)

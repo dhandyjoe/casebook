@@ -2,6 +2,7 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { register } from './api'
+import { useAuth } from './session'
 import { WORKSPACES } from '@/lib/workspaces'
 import { Field, SelectField, linkClass, submitClass } from './Field'
 import { useAuthForm } from './useAuthForm'
@@ -21,7 +22,8 @@ export function RegisterForm() {
       ...(f.password.length >= 8 ? {} : { password: t('auth.errors.weakPassword') }),
     }),
     async (f) => {
-      await register({ name: f.name.trim(), workspaceId: f.workspaceId, email: f.email.trim(), password: f.password })
+      const session = await register({ name: f.name.trim(), workspaceId: f.workspaceId, email: f.email.trim(), password: f.password })
+      useAuth.setState({ session, ready: true })
       await navigate({ to: '/' })
     },
   )

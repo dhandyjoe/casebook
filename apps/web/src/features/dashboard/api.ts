@@ -15,7 +15,8 @@ export interface DashboardData { stats: Record<string, ProjectStats>; review: Re
 type Ref = Pick<Project, 'id' | 'name' | 'color'>
 const RUNS_SCANNED = 3 // run non-Draft terbaru per project yang dicari hasil terbarunya
 const PER_SOURCE = 5
-export const SHOWN = 6
+export const REVIEWS_SHOWN = 5
+const ACTIVITY_MAX = 20
 
 const submittedAt = (c: TestCase) => c.history.find((h) => h.action === 'submitted')?.at ?? c.updatedAt
 
@@ -47,6 +48,6 @@ export async function loadDashboard(projects: Ref[]): Promise<DashboardData> {
   return {
     stats: Object.fromEntries(parts.map((x) => [x.id, x.stats])),
     review: parts.flatMap((x) => x.review).sort((a, b) => a.submittedAt.localeCompare(b.submittedAt)),
-    activity: parts.flatMap((x) => x.activity).sort((a, b) => b.at.localeCompare(a.at)).slice(0, SHOWN),
+    activity: parts.flatMap((x) => x.activity).sort((a, b) => b.at.localeCompare(a.at)).slice(0, ACTIVITY_MAX),
   }
 }

@@ -77,8 +77,8 @@ Workspace adalah batas data. Pilihannya statis (tanpa fitur kelola workspace) le
 - Dropdown Workspace Name ada di form Register; pilihan itu tersimpan di akun (`users/{uid}.workspaceId`). Top bar menampilkan nama workspace aktif.
 - Semua user dalam satu workspace yang sama boleh melihat dan mengerjakan test case dan test run yang sama.
 - User tidak bisa melihat, mencari, atau membuka test case, test run, maupun data lain milik workspace lain. Pembatasan ini ditegakkan di aturan database, bukan hanya di UI.
-- **Reviewer** = user mana pun di workspace yang sama; dialah yang meng-approve atau mengembalikan test case ke Draft (lihat 5.4.1).
-- Dashboard menyimpan pin project per user (`users/{uid}.pinnedProjectIds`).
+- **Reviewer** = user mana pun di workspace yang sama; dialah yang meng-approve test case (lihat 5.4.1).
+- Pin project di Dashboard berlaku untuk seluruh workspace (`projects/{p}.pinned`): project yang di-pin satu user juga tampil ter-pin bagi user lain.
 
 ## 4. Konsep Inti & Hierarki Data
 
@@ -206,10 +206,10 @@ Setiap test case baru tersimpan sebagai **Draft**. Setelah penulis klik **Send f
 
 | ID | Kebutuhan | Prioritas |
 | --- | --- | --- |
-| APR-01 | Case baru (dibuat manual, quick add, atau import) tersimpan sebagai Draft; penulis mengirimnya dengan tombol "Send for review" sehingga status menjadi Under Review | P0 |
-| APR-02 | Semua user di workspace yang sama boleh Approve / Return to Draft; user dari workspace lain tidak bisa (API menolak dengan 403) | P0 |
-| APR-03 | "Return to Draft" wajib disertai catatan perbaikan; catatan tampil di panel case Draft dan penulis case mendapat notifikasi | P0 |
-| APR-04 | Mengedit konten utama (title, preconditions, steps, expected result) pada case Approved mengembalikan status ke Under Review; case Draft bebas diedit; edit field minor (priority, type, references) tidak mengubah status | P0 |
+| APR-01 | Case baru (dibuat manual, quick add, atau import) tersimpan sebagai Draft; penulis mengirimnya dengan tombol "Send for review" sehingga status menjadi Under Review. Bulk bar juga punya "Send for review" (pilih reviewer di dialog), aktif hanya bila semua case terpilih berstatus Draft | P0 |
+| APR-02 | Semua user di workspace yang sama boleh Approve; user dari workspace lain tidak bisa (API menolak dengan 403) | P0 |
+| APR-03 | ~~"Return to Draft" dengan catatan perbaikan~~ — dihapus (Nov 2026): case Under Review hanya punya tombol Approve. Catatan "returned" lama tetap tampil di panel case Draft | — |
+| APR-04 | Mengedit case tidak mengubah statusnya: case Active tetap Active, Draft tetap Draft (Nov 2026; sebelumnya edit konten case Approved kembali ke Under Review) | P0 |
 | APR-05 | Hanya case Approved yang bisa dipilih saat membuat Test Run / Plan; case lain tampil abu-abu dengan label statusnya | P0 |
 | APR-06 | Antrean "Menunggu review" untuk semua user: widget di Dashboard + filter status di halaman Test Cases | P0 |
 | APR-07 | Badge status berwarna di daftar case dan di panel detail case | P0 |
@@ -260,7 +260,7 @@ Penyimpanan: evidence diunggah langsung ke Cloudinary dengan signed upload (tand
 
 | ID | Kebutuhan | Prioritas |
 | --- | --- | --- |
-| PLAN-01 | Test plan = wadah beberapa run sekaligus (mis. Smoke, Regression, New Features) di satu milestone | P0 |
+| PLAN-01 | Test plan = wadah beberapa run sekaligus (mis. Smoke, Regression, New Features) di satu milestone. Tombol pembuat plan di halaman Test Runs dihapus (Nov 2026); plan yang sudah ada tetap tampil | P0 |
 | PLAN-02 | Halaman plan menampilkan agregat progres semua run di dalamnya | P0 |
 | PLAN-03 | Configurations: grup (Browser, OS, Device) dan opsi (Chrome, Firefox…); plan membuat satu run per kombinasi | P1 |
 | PLAN-04 | Status plan dihitung otomatis dari run-nya: Done bila semua run Done, Draft bila semua run Draft, selain itu Active | P0 |
@@ -269,7 +269,7 @@ Penyimpanan: evidence diunggah langsung ke Cloudinary dengan signed upload (tand
 
 | ID | Kebutuhan | Prioritas |
 | --- | --- | --- |
-| MS-01 | CRUD milestone: nama, deskripsi, start date, due date, status aktif/selesai | P0 |
+| MS-01 | CRUD milestone: nama, deskripsi, start date, due date, status aktif/selesai. Completed ditandai manual dan terkunci: tidak bisa diedit atau dibuka lagi (rules ikut menolak); Open/Upcoming dihitung dari tanggal di client | P0 |
 | MS-02 | Run dan plan ditautkan ke milestone; halaman milestone menampilkan progres gabungan | P0 |
 | MS-03 | Sub-milestone (mis. Release 3.0 → Sprint 21, Sprint 22) | P1 |
 | MS-04 | Penanda milestone lewat due date (overdue) di dashboard | P1 |
@@ -323,7 +323,7 @@ Target UX: tester baru bisa membuat case pertama dan mengeksekusi run pertama da
 
 **Prinsip desain**
 
-1. **Satu pola navigasi.** Top bar: logo, nama workspace aktif, project switcher, pencarian global, notifikasi, avatar. Di dalam project: tab tetap Overview · Todo · Milestones · Test Runs & Results · Test Cases · Reports.
+1. **Satu pola navigasi.** Top bar: logo, nama workspace aktif, project switcher, pencarian global (project, milestone, test run, test case di semua project workspace), avatar. Tombol notifikasi tidak ditampilkan. Di dalam project: tab tetap Overview · Todo · Milestones · Test Runs & Results · Test Cases · Reports.
 2. **Split view untuk data hierarkis.** Pohon section/folder di kiri, daftar di tengah, detail di kanan, dipakai di Test Cases dan Test Run. Klik item membuka detail di kolom kanan tanpa pindah halaman.
 3. **Status = warna yang sama di mana pun.** Passed hijau, Failed merah, Blocked abu gelap, Retest kuning, Untested abu muda. Progress bar bertumpuk memakai urutan warna yang sama.
 4. **Aksi tersering = paling sedikit klik.** Ubah status inline, quick add case, Next/Previous test, shortcut keyboard (mis. `P` Passed, `F` Failed, `B` Blocked, `N` next).
@@ -343,7 +343,7 @@ Target UX: tester baru bisa membuat case pertama dan mengeksekusi run pertama da
 | Dashboard | Kartu project + progress bar, panel Awaiting review, feed aktivitas | Buka project, buat project |
 | Project Overview | Grafik status 14 hari, milestone aktif, run aktif, feed aktivitas | Buat run/plan/milestone |
 | Test Cases | Tiga kolom: pohon section · daftar case (ID, title, priority, status review) · panel detail case | Quick add, filter, bulk edit, import |
-| Case detail / editor | Panel kanan Test Cases: field, Preconditions, Steps, Expected result (tiga blok berwarna), riwayat; case baru lewat dialog Add test case | Save as Draft, Send for review, Approve / Return to Draft |
+| Case detail / editor | Panel kanan Test Cases: field, Preconditions, Steps, Expected result (tiga blok berwarna), riwayat; case baru lewat dialog Add test case | Save as Draft, Send for review, Approve |
 | Test Runs & Results | Daftar plan & run aktif dan selesai, masing-masing dengan progress bar | Add run, add plan |
 | Run detail | Ringkasan run (donut + % passed) di atas; di bawahnya tiga kolom: folder · daftar test · detail test | Ubah status inline, assign, tambah hasil |
 | Test detail | Kolom kanan Run detail: Preconditions, Steps, Expected result, riwayat hasil, form Add result (status + Comment & evidence) | Simpan hasil, Next/Previous |

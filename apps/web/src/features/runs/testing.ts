@@ -16,11 +16,6 @@ export const fakeApi = {
   listRecentTests: async (_projectId: string, runId: string, n: number) => (testsOf[runId] ?? []).filter((t) => t.results.length > 0).slice(0, n),
   listRuns: async (projectId: string) => [...(byProject[projectId] ?? [])],
   listPlans: async (projectId: string) => [...(plansOf[projectId] ?? [])],
-  createPlan: async (_uid: string, projectId: string, input: Omit<Plan, 'id'>) => {
-    const plan = { id: `fp${(plansOf[projectId] ?? []).length + 1}`, name: input.name.trim(), milestoneId: input.milestoneId }
-    ;(plansOf[projectId] ??= []).push(plan)
-    return plan
-  },
   createRun: async (uid: string, projectId: string, input: RunInput & { cases: TestCase[]; start: boolean }) => {
     const id = `fr${Date.now().toString(36)}`
     const untested = input.cases.filter((c) => c.status === 'active').length
@@ -53,6 +48,9 @@ function refreshRun(projectId: string, runId: string) {
   run.counts = countTests(testsOf[runId] ?? [])
   run.status = deriveRunStatus(run.status, run.counts)
 }
+
+/** Plan siap pakai; plan baru tidak lagi dibuat dari UI, tapi plan lama tetap tampil. */
+export const addFakePlan = (projectId: string, plan: Plan) => void (plansOf[projectId] ??= []).push(plan)
 
 /** Run siap pakai untuk test layar yang membaca daftar run (mis. Milestones). */
 export function addFakeRun(projectId: string, run: Partial<Run> & Pick<Run, 'id' | 'name'>) {

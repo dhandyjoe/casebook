@@ -70,13 +70,6 @@ export async function listPlans(projectId: string): Promise<Plan[]> {
   return snap.docs.map((d) => ({ id: d.id, name: d.data().name, milestoneId: d.data().milestoneId })).sort((a, b) => a.name.localeCompare(b.name))
 }
 
-export async function createPlan(uid: string, projectId: string, input: Omit<Plan, 'id'>): Promise<Plan> {
-  const ref = doc(plans(projectId))
-  const plan = { name: input.name.trim(), milestoneId: input.milestoneId }
-  await setDoc(ref, { ...plan, createdBy: uid, createdAt: serverTimestamp(), updatedBy: uid, updatedAt: serverTimestamp() })
-  return { id: ref.id, ...plan }
-}
-
 /** milestoneId diisi = run milestone itu; null = run tanpa milestone; undefined = semua run. */
 export async function listRuns(projectId: string, milestoneId?: string | null): Promise<Run[]> {
   const snap = await getDocs(milestoneId === undefined ? runs(projectId) : query(runs(projectId), where('milestoneId', '==', milestoneId)))

@@ -34,9 +34,20 @@ describe('Dashboard', () => {
     expect(card).toHaveTextContent('50% executed · 100% passed')
     const review = within(screen.getByRole('heading', { name: 'Awaiting review' }).closest('section')!)
     expect(await review.findByText('Case 1001')).toBeInTheDocument()
-    expect(review.getByRole('link', { name: 'Review' })).toHaveAttribute('href', expect.stringContaining('/p/mobile/cases'))
+    expect(review.getByRole('link', { name: 'Review' })).toHaveAttribute('href', expect.stringMatching(/\/p\/mobile\/cases\?.*section=s1/))
     const activity = within(screen.getByRole('heading', { name: 'Recent activity' }).closest('section')!)
     expect(await activity.findByText(/created the case/)).toBeInTheDocument()
+  })
+
+  it('shows 5 cases awaiting review, then all of them in a scrolling list after View more', async () => {
+    renderApp('/')
+    const cases = [1, 2, 3, 4, 5, 6, 7].map((n) => newCase({ title: `Case ${n}`, sectionId: 's1', type: 'Functional', priority: 'High', refs: '', preconditions: [], steps: [], expected: [], number: n, status: 'under_review' }, 'Budi Santoso', new Date()))
+    seedFakeCases('mobile', { sections: [{ id: 's1', parentId: null, name: 'Login' }], cases })
+    const review = within((await screen.findByRole('heading', { name: 'Awaiting review' })).closest('section')!)
+    await userEvent.click(await review.findByRole('button', { name: 'View more (2)' }))
+    expect(review.getAllByRole('link', { name: 'Review' })).toHaveLength(7)
+    expect(review.getByRole('list')).toHaveClass('overflow-y-auto')
+    expect(review.queryByRole('button', { name: /View more/ })).not.toBeInTheDocument()
   })
 
   it('shows the active workspace name in the header', async () => {
@@ -118,26 +129,56 @@ describe('Dashboard', () => {
   })
 })
 
-describe('Project search', () => {
+describe('Global search', () => {
+  const box = () => screen.getByRole('searchbox', { name: 'Search' })
+  const results = () => within(screen.getByRole('list', { name: 'Search results' }))
+
   it('finds a project by name or description, case-insensitively, and opens it', async () => {
     const user = userEvent.setup()
     const { router } = renderApp('/')
     await screen.findByRole('link', { name: /Seller Portal/ })
-    await user.type(screen.getByRole('searchbox', { name: 'Search projects' }), 'ONBOARDING')
-    const results = within(screen.getByRole('list', { name: 'Search results' }))
-    expect(results.getAllByRole('link')).toHaveLength(1)
-    await user.click(results.getByRole('link', { name: 'Seller Portal' }))
+    await user.type(box(), 'ONBOARDING')
+    await user.click(await results().findByRole('button', { name: /Seller Portal.*Project/ }))
     await waitFor(() => expect(router.state.location.pathname).toBe('/p/seller/cases'))
+  })
+
+  it('finds milestones, runs and cases with their project, menu and kind, and opens each one', async () => {
+    const user = userEvent.setup()
+    const { router } = renderApp('/')
+    seedFakeCases('mobile', {
+      sections: [{ id: 's1', parentId: null, name: 'Login' }],
+      cases: [newCase({ title: 'Login with Google', sectionId: 's1', type: 'Functional', priority: 'High', refs: '', preconditions: [], steps: [], expected: [], number: 1001, status: 'draft' }, 'Budi', new Date())],
+    })
+    addFakeRun('mobile', { id: 'r9', name: 'Login smoke' })
+    await screen.findByRole('link', { name: /Seller Portal/ })
+    await user.type(box(), 'login')
+    const testCase = await results().findByRole('button', { name: /C1001 · Login with Google/ })
+    expect(testCase).toHaveTextContent('Mobile App · Test Cases')
+    expect(testCase).toHaveTextContent('Test Case')
+    const run = results().getByRole('button', { name: /Login smoke/ })
+    expect(run).toHaveTextContent('Mobile App · Test Runs & Results')
+    await user.click(testCase)
+    await waitFor(() => expect(router.state.location.href).toBe('/p/mobile/cases?section=s1&case=C1001'))
+
+    await user.type(box(), 'login smoke')
+    await user.click(await results().findByRole('button', { name: /Login smoke/ }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/p/mobile/runs/r9'))
+
+    await user.type(box(), 'release 3.3')
+    const milestone = await results().findByRole('button', { name: /Release 3.3/ })
+    expect(milestone).toHaveTextContent('Online Store — Web · Milestones')
+    await user.click(milestone)
+    await waitFor(() => expect(router.state.location.href).toMatch(/^\/p\/store\/milestones\?m=m2/))
   })
 
   it('opens the first result on Enter and closes on Escape', async () => {
     const user = userEvent.setup()
     const { router } = renderApp('/')
     await screen.findByRole('link', { name: /Seller Portal/ })
-    const box = screen.getByRole('searchbox', { name: 'Search projects' })
-    await user.type(box, 'mobile{Escape}')
+    await user.type(box(), 'mobile{Escape}')
     expect(screen.queryByRole('list', { name: 'Search results' })).not.toBeInTheDocument()
-    await user.type(box, '{Enter}')
+    await user.click(box())
+    await user.keyboard('{Enter}')
     await waitFor(() => expect(router.state.location.pathname).toBe('/p/mobile/cases'))
   })
 
@@ -145,8 +186,8 @@ describe('Project search', () => {
     const user = userEvent.setup()
     renderApp('/')
     await screen.findByRole('link', { name: /Seller Portal/ })
-    await user.type(screen.getByRole('searchbox', { name: 'Search projects' }), 'zzz')
-    expect(screen.getByText('No projects match “zzz”.')).toBeInTheDocument()
+    await user.type(box(), 'zzz')
+    expect(await screen.findByText('Nothing matches “zzz”.')).toBeInTheDocument()
   })
 
   it('focuses the box when / is pressed', async () => {
@@ -154,6 +195,6 @@ describe('Project search', () => {
     renderApp('/')
     await screen.findByRole('link', { name: /Seller Portal/ })
     await user.keyboard('/')
-    expect(screen.getByRole('searchbox', { name: 'Search projects' })).toHaveFocus()
+    expect(box()).toHaveFocus()
   })
 })

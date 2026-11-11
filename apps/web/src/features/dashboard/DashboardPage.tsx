@@ -10,7 +10,7 @@ import { personOf } from '@/features/people/data'
 import { relativeTime } from '@/lib/time'
 import { useProjects, usePinned } from '@/features/projects/hooks'
 import { ProjectDialog } from '@/features/projects/ProjectDialog'
-import { SHOWN } from './api'
+import { REVIEWS_SHOWN } from './api'
 import { useDashboard } from './hooks'
 import { StatusBar, STATUS_DOT, STATUS_KEYS } from './StatusBar'
 
@@ -26,10 +26,10 @@ export function DashboardPage() {
   const { t } = useTranslation()
   const session = useAuth((s) => s.session)!
   const { data } = useProjects()
-  const { ready, failed, isPinned, toggle } = usePinned()
-  // Daftar baru tampil setelah pin terbaca, supaya project tidak sempat masuk ke "Other projects".
-  const projects = ready ? (data ?? []) : []
+  const { failed, toggle } = usePinned()
+  const projects = data ?? []
   const [creating, setCreating] = useState(false)
+  const [allReviews, setAllReviews] = useState(false)
   const dash = useDashboard(data)
   const users = useUsers(!!dash.data?.activity.length).data
   const stats = dash.data?.stats
@@ -37,8 +37,8 @@ export function DashboardPage() {
   const activity = dash.data?.activity ?? []
   const now = new Date()
   const date = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(now)
-  const pinned = projects.filter((p) => isPinned(p.id))
-  const others = projects.filter((p) => !isPinned(p.id))
+  const pinned = projects.filter((p) => p.pinned)
+  const others = projects.filter((p) => !p.pinned)
 
   return (
     <div className="min-h-screen bg-page">
@@ -72,13 +72,13 @@ export function DashboardPage() {
             </div>
 
             {failed && <p role="alert" className="m-0 text-danger-text">{t('dashboard.pinError')}</p>}
-            {ready && projects.length === 0 && (
+            {projects.length === 0 && (
               <div className={`${card} flex flex-col items-center gap-3 p-8 text-center text-ink-muted`}>
                 <p className="m-0">{t('dashboard.noProjects')}</p>
                 <button type="button" onClick={() => setCreating(true)} className="h-10 cursor-pointer rounded-md border border-border-strong bg-surface px-4 font-semibold text-ink">{t('dashboard.newProject')}</button>
               </div>
             )}
-            {projects.length > 0 && ready && pinned.length === 0 && <p className={`${card} m-0 p-8 text-center text-ink-muted`}>{t('dashboard.noPinned')}</p>}
+            {projects.length > 0 && pinned.length === 0 && <p className={`${card} m-0 p-8 text-center text-ink-muted`}>{t('dashboard.noPinned')}</p>}
             <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
               {pinned.map((p) => {
                 const s = stats?.[p.id] ?? { cases: 0, activeRuns: 0, segs: [0, 0, 0, 0, 100] as const }
@@ -103,7 +103,7 @@ export function DashboardPage() {
                         >
                           {t('dashboard.activeRuns', { count: s.activeRuns })}
                         </span>
-                        <button type="button" aria-label={t('dashboard.unpin', { name: p.name })} onClick={() => toggle(p.id)} className={pinButton}>
+                        <button type="button" aria-label={t('dashboard.unpin', { name: p.name })} onClick={() => toggle(p)} className={pinButton}>
                           <PinOff size={16} aria-hidden="true" />
                         </button>
                       </div>
@@ -135,7 +135,7 @@ export function DashboardPage() {
                         </span>
                         <span className="flex-none text-[13px] text-ink-muted">{stats?.[p.id] ? t('dashboard.cases', { count: stats[p.id]!.cases }) : ''}</span>
                       </Link>
-                      <button type="button" aria-label={t('dashboard.pin', { name: p.name })} onClick={() => toggle(p.id)} className={pinButton}>
+                      <button type="button" aria-label={t('dashboard.pin', { name: p.name })} onClick={() => toggle(p)} className={pinButton}>
                         <Pin size={16} aria-hidden="true" />
                       </button>
                     </li>
@@ -153,23 +153,29 @@ export function DashboardPage() {
               </div>
               {dash.isError && <p role="alert" className="m-0 text-danger-text">{t('dashboard.summaryError')}</p>}
               {!dash.isError && review.length === 0 && <p className="m-0 text-ink-muted">{t('dashboard.noReview')}</p>}
-              <ul className="m-0 flex list-none flex-col p-0">
-                {review.slice(0, SHOWN).map((r) => (
+              <ul className={`m-0 flex list-none flex-col p-0 ${allReviews ? 'max-h-[340px] overflow-y-auto' : ''}`}>
+                {(allReviews ? review : review.slice(0, REVIEWS_SHOWN)).map((r) => (
                   <li key={`${r.projectId}/${r.testCase.id}`} className="flex items-center gap-3 border-t border-border-subtle py-2.5 first:border-t-0">
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{r.testCase.title}</div>
                       <div className="truncate text-xs text-ink-subtle">C{r.testCase.number} · {r.projectName} · {relativeTime(t, r.submittedAt)}</div>
                     </div>
-                    <Link to="/p/$projectId/cases" params={{ projectId: r.projectId }} search={{ status: 'under_review', case: r.testCase.id }} className="flex-none rounded-md border border-border-strong px-3 py-1 text-[13px] font-semibold text-ink no-underline hover:bg-surface-subtle">{t('dashboard.review')}</Link>
+                    <Link to="/p/$projectId/cases" params={{ projectId: r.projectId }} search={{ status: 'under_review', section: r.testCase.sectionId, case: r.testCase.id }} className="flex-none rounded-md border border-border-strong px-3 py-1 text-[13px] font-semibold text-ink no-underline hover:bg-surface-subtle">{t('dashboard.review')}</Link>
                   </li>
                 ))}
               </ul>
+              {!allReviews && review.length > REVIEWS_SHOWN && (
+                <button type="button" onClick={() => setAllReviews(true)} className="mt-2 h-9 cursor-pointer rounded-md border border-border-strong bg-surface font-semibold text-ink hover:bg-surface-subtle">
+                  {t('dashboard.viewMore', { count: review.length - REVIEWS_SHOWN })}
+                </button>
+              )}
             </section>
 
             <section aria-labelledby="h-activity" className={`${card} p-5`}>
               <h2 id="h-activity" className="m-0 mb-3 text-base font-semibold">{t('dashboard.recentActivity')}</h2>
               {!dash.isError && activity.length === 0 && <p className="m-0 text-ink-muted">{t('dashboard.noActivity')}</p>}
-              <ul className="m-0 flex list-none flex-col p-0">
+              {/* ±6 baris terlihat; sisanya (maks. 20) di-scroll di dalam kartu. */}
+              <ul className="m-0 flex max-h-[400px] list-none flex-col overflow-y-auto p-0">
                 {activity.map((a) => {
                   const name = a.kind === 'result' ? (users?.find((u) => u.uid === a.who)?.name ?? '') : a.who
                   const p = personOf(initialsOf(name))

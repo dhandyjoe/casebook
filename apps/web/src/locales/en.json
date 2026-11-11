@@ -57,15 +57,21 @@
     }
   },
   "header": {
-    "searchLabel": "Search projects",
-    "searchPlaceholder": "Search projects",
-    "notifications": "Notifications",
+    "searchLabel": "Search",
+    "searchPlaceholder": "Search projects, milestones, runs, cases",
     "account": "Account: {{name}}",
     "workspace": "Workspace",
     "signOut": "Sign out",
     "switchProject": "Switch project, current: {{name}}",
-    "searchEmpty": "No projects match “{{query}}”.",
-    "searchResults": "Search results"
+    "searchEmpty": "Nothing matches “{{query}}”.",
+    "searching": "Searching…",
+    "searchResults": "Search results",
+    "kind": {
+      "project": "Project",
+      "milestone": "Milestone",
+      "run": "Test Run",
+      "case": "Test Case"
+    }
   },
   "dashboard": {
     "greeting_morning": "Good morning, {{name}}",
@@ -95,6 +101,7 @@
     "unpin": "Unpin {{name}}",
     "noPinned": "No pinned projects yet. Pin a project from the list below.",
     "noReview": "No cases are waiting for review.",
+    "viewMore": "View more ({{count}})",
     "noActivity": "No activity yet.",
     "summaryError": "Case counts, reviews and activity could not be loaded.",
     "noProjects": "No projects yet. Create your first project to get started.",
@@ -171,7 +178,10 @@
       "newIn": "New section in {{parent}}",
       "newTop": "New top-level section",
       "expand": "Expand {{name}}",
-      "collapse": "Collapse {{name}}"
+      "collapse": "Collapse {{name}}",
+      "searchLabel": "Search sections",
+      "searchPlaceholder": "Search sections",
+      "noMatch": "No sections match “{{query}}”."
     },
     "header": {
       "add": "Add case",
@@ -200,7 +210,9 @@
       "approve": "Approve",
       "delete": "Delete",
       "cancel": "Cancel",
-      "approveNone": "Select cases that are Under Review to approve them."
+      "approveNone": "Select cases that are Under Review to approve them.",
+      "sendReview": "Send for review",
+      "sendReviewNone": "Only Draft cases can be sent for review. Unselect cases that aren’t Draft."
     },
     "detail": {
       "label": "Case details",
@@ -216,6 +228,7 @@
       "sendReview": "Send for review",
       "reviewTitle": "Send for review",
       "reviewBody": "Choose who reviews this case.",
+      "reviewBodyBulk": "Choose who reviews these {{count}} Draft cases.",
       "reviewer": "Reviewer",
       "you": "you",
       "usersLoading": "Loading users…",
@@ -224,11 +237,6 @@
       "pendingBanner": "Waiting for review by {{reviewer}}. This case can’t be added to a Test Run until it’s approved.",
       "pendingBannerAny": "Waiting for review. This case can’t be added to a Test Run until it’s approved.",
       "approve": "Approve",
-      "returnToDraft": "Return to Draft",
-      "reasonLabel": "What needs fixing?",
-      "required": "(required)",
-      "reasonPlaceholder": "This note is sent to the case author",
-      "cancel": "Cancel",
       "blocks": {
         "detail": "Detail",
         "pre": "Preconditions",
@@ -276,7 +284,6 @@
       "exp": "Expected result",
       "expPlaceholder": "What should happen once all the steps are done. One line per result.",
       "hintAdd": "Save as Draft if you still want to add to it. Send it for review when it’s ready for a teammate to check.",
-      "hintEditApproved": "This case is Active. Changing its title, preconditions, steps, or expected result sends it back to Under Review.",
       "hintEdit": "Changes are saved right away and recorded in the case history.",
       "needTitle": "Enter a title to continue.",
       "cancel": "Cancel",
@@ -349,13 +356,9 @@
       "subtitle": "{{active}} Active · {{draft}} Draft · {{done}} Done across {{milestones}}",
       "milestones_one": "{{count}} milestone",
       "milestones_other": "{{count}} milestones",
-      "addPlan": "Test Plan",
       "addRun": "Test Run",
       "filterLabel": "Filter by run status",
       "tabAll": "All",
-      "hintDraft": "not started",
-      "hintActive": "in progress",
-      "hintDone": "all tests have a final result",
       "noRuns": "No runs with this status.",
       "milestone": "Milestone",
       "due": "Due {{date}}",
@@ -435,11 +438,6 @@
       "saveDraft": "Save as Draft",
       "saveStart": "Create & start run",
       "save": "Save changes",
-      "planAddTitle": "Add Test Plan",
-      "planName": "Plan name",
-      "planPlaceholder": "e.g. Regression Release 3.3",
-      "planCreate": "Create plan",
-      "planNeedName": "Enter a plan name to continue.",
       "noMilestone": "No milestone"
     },
     "detail": {
@@ -582,7 +580,6 @@
     "needRange": "Start date must be on or before the due date.",
     "edit": "Edit",
     "complete": "Mark as complete",
-    "reopen": "Reopen",
     "delete": "Delete",
     "deleteTitle": "Delete milestone?",
     "deleteBody": "“{{name}}” will be deleted permanently. This can’t be undone.",
@@ -650,8 +647,6 @@
       "run": "Summary — Test Run"
     },
     "asOf": "Data as of {{when}}",
-    "copyLink": "Copy link",
-    "copied": "Link copied",
     "pickMilestone": "Choose milestone",
     "pickRun": "Choose test run",
     "loading": "Loading report…",

@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { useAuth } from '@/features/auth/session'
 import { useUsers } from '@/features/people/useUsers'
 import type { TestCase } from '@/features/cases/domain'
-import { addResult, createPlan, createRun, getRun, listPlans, listResults, listRuns, listTests, removeCasesFromRuns, setRunCases, startRun, updateRun, type RunPatch } from './api'
+import { addResult, createRun, getRun, listPlans, listResults, listRuns, listTests, removeCasesFromRuns, setRunCases, startRun, updateRun, type RunPatch } from './api'
 import { initialsOf, type ResultInput, type RunTest } from './domain'
 import { useRunsStore } from './store'
 
@@ -24,15 +24,6 @@ export function useCreateRun(projectId: string) {
 
 export const usePlans = (projectId: string) =>
   useQuery({ queryKey: [...key(projectId), 'plans'], queryFn: () => listPlans(projectId) })
-
-export function useCreatePlan(projectId: string) {
-  const uid = useAuth((s) => s.session!.uid)
-  const client = useQueryClient()
-  return useMutation({
-    mutationFn: (input: Parameters<typeof createPlan>[2]) => createPlan(uid, projectId, input),
-    onSuccess: () => client.invalidateQueries({ queryKey: key(projectId) }),
-  })
-}
 
 /** Case dihapus dari Test Cases: test-nya ikut lepas dari semua run project (project contoh `store` memakai store mock, tidak ikut). */
 export function useRemoveCasesFromRuns(projectId: string) {

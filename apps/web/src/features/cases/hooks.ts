@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { useAuth } from '@/features/auth/session'
 import { createCases, createSection, deleteCases, deleteSections, listCases, listSections, saveCases } from './api'
 import {
-  approve, canReview, editCase, newCase, returnToDraft, sectionWithDescendants, submitForReview,
+  approve, canReview, editCase, newCase, sectionWithDescendants, submitForReview,
   type CaseEdit, type Person, type Section, type TestCase,
 } from './domain'
 import { importLegacyCases } from './legacy'
@@ -57,9 +57,8 @@ export function useCaseActions(projectId: string) {
       failed: false,
       addCase: async (input: CaseEdit & { status: 'draft' | 'under_review' }, who: string) => local.addCase(input, who),
       updateCase: async (id: string, edit: CaseEdit, who: string) => local.updateCase(id, edit, who),
-      submit: async (id: string, who: string, reviewer: Person) => local.submit(id, who, reviewer),
+      submit: async (ids: string[], who: string, reviewer: Person) => local.submit(ids, who, reviewer),
       approveCases: async (ids: string[], who: Person) => local.approveCases(ids, who),
-      returnCase: async (id: string, note: string, who: Person) => local.returnCase(id, note, who),
       moveCases: async (ids: string[], sectionId: string) => local.moveCases(ids, sectionId),
       copyCases: async (ids: string[], sectionId: string, who: string) => local.copyCases(ids, sectionId, who),
       deleteCases: async (ids: string[]) => local.deleteCases(ids),
@@ -73,9 +72,8 @@ export function useCaseActions(projectId: string) {
     addCase: async (input: CaseEdit & { status: 'draft' | 'under_review' }, who: string) =>
       (await run(() => createCases(uid, projectId, (n) => [newCase({ ...input, number: n }, who, new Date())])))?.[0],
     updateCase: (id: string, edit: CaseEdit, who: string) => save(pick([id]).map((c) => editCase(c, edit, who, new Date()))),
-    submit: (id: string, who: string, reviewer: Person) => save(pick([id]).map((c) => submitForReview(c, who, new Date(), reviewer))),
+    submit: (ids: string[], who: string, reviewer: Person) => save(pick(ids).filter((c) => c.status === 'draft').map((c) => submitForReview(c, who, new Date(), reviewer))),
     approveCases: (ids: string[], who: Person) => save(pick(ids).filter((c) => canReview(c, who.uid)).map((c) => approve(c, who.name, new Date()))),
-    returnCase: (id: string, note: string, who: Person) => save(pick([id]).filter((c) => canReview(c, who.uid)).map((c) => returnToDraft(c, who.name, note, new Date()))),
     moveCases: (ids: string[], sectionId: string) => save(pick(ids).map((c) => ({ ...c, sectionId }))),
     copyCases: (ids: string[], sectionId: string, who: string) => {
       const source = pick(ids)

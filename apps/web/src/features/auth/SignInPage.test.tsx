@@ -52,6 +52,16 @@ describe('Sign in', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('rina@acme.com')
   })
 
+  it('opens the Dashboard after signing in from a deep link', async () => {
+    vi.mocked(api.signIn).mockImplementation(async () => { useAuth.setState({ session: demo }) })
+    const { router } = renderApp('/p/store/cases', { signedIn: false })
+    await userEvent.type(await screen.findByLabelText('Email'), 'rina@acme.com')
+    await userEvent.type(screen.getByLabelText('Password'), 'secret-pass')
+    await userEvent.click(screen.getByRole('button', { name: 'Sign in' }))
+    expect(await screen.findByRole('heading', { level: 1, name: /Rina/ })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/')
+  })
+
   it('shows Sign in for a signed-out visitor, even on a deep link', async () => {
     renderApp('/p/store/cases', { signedIn: false })
     expect(await screen.findByRole('heading', { name: 'Sign in to Casebook' })).toBeInTheDocument()
@@ -62,7 +72,8 @@ describe('Register', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('is reachable from Sign in and creates the account', async () => {
-    vi.mocked(api.register).mockImplementation(async () => { useAuth.setState({ session: demo }); return demo })
+    // Listener auth sudah memasang sesi tanpa workspace (users/{uid} belum tertulis); RegisterForm memakai sesi hasil register().
+    vi.mocked(api.register).mockImplementation(async () => { useAuth.setState({ session: { ...demo, workspaceId: '' } }); return demo })
     renderApp('/', { signedIn: false })
     await userEvent.click(await screen.findByRole('link', { name: 'Sign up' }))
     await userEvent.type(await screen.findByLabelText('Full name'), 'Rina Saputra')

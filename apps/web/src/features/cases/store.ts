@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import {
-  approve, canReview, editCase, newCase, returnToDraft, sectionWithDescendants, submitForReview,
+  approve, canReview, editCase, newCase, sectionWithDescendants, submitForReview,
   type CaseEdit, type Person, type Section, type TestCase,
 } from './domain'
 import { buildSeed } from './seed'
@@ -11,9 +11,8 @@ interface CasesState {
   nextNumber: number
   addCase: (input: CaseEdit & { status: 'draft' | 'under_review' }, who: string) => TestCase
   updateCase: (id: string, edit: CaseEdit, who: string) => void
-  submit: (id: string, who: string, reviewer: Person) => void
+  submit: (ids: string[], who: string, reviewer: Person) => void
   approveCases: (ids: string[], who: Person) => void
-  returnCase: (id: string, note: string, who: Person) => void
   moveCases: (ids: string[], sectionId: string) => void
   /** Salinan selalu berstatus Draft dengan ID baru. */
   copyCases: (ids: string[], sectionId: string, who: string) => void
@@ -36,9 +35,8 @@ export const useCasesStore = create<CasesState>()(
       return created
     },
     updateCase: (id, edit, who) => set((s) => ({ cases: map(s.cases, [id], (c) => editCase(c, edit, who, new Date())) })),
-    submit: (id, who, reviewer) => set((s) => ({ cases: map(s.cases, [id], (c) => submitForReview(c, who, new Date(), reviewer)) })),
+    submit: (ids, who, reviewer) => set((s) => ({ cases: map(s.cases, ids, (c) => submitForReview(c, who, new Date(), reviewer)) })),
     approveCases: (ids, who) => set((s) => ({ cases: map(s.cases, ids, (c) => (canReview(c, who.uid) ? approve(c, who.name, new Date()) : c)) })),
-    returnCase: (id, note, who) => set((s) => ({ cases: map(s.cases, [id], (c) => (canReview(c, who.uid) ? returnToDraft(c, who.name, note, new Date()) : c)) })),
     moveCases: (ids, sectionId) => set((s) => ({ cases: map(s.cases, ids, (c) => ({ ...c, sectionId })) })),
     copyCases: (ids, sectionId, who) => set((s) => {
       const now = new Date()
