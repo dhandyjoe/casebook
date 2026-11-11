@@ -47,7 +47,7 @@ function CaseForm({ editing, projectName, sections, defaultSectionId, onClose, o
     steps: steps.map((s) => s.trim()).filter(Boolean),
     expected,
   })
-  const hint = editing ? (editing.status === 'active' ? t('cases.dialog.hintEditApproved') : t('cases.dialog.hintEdit')) : t('cases.dialog.hintAdd')
+  const hint = editing ? t('cases.dialog.hintEdit') : t('cases.dialog.hintAdd')
 
   return (
     <>

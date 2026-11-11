@@ -64,7 +64,12 @@ const runDetailRoute = createRoute({
 })
 
 const overviewRoute = createRoute({ getParentRoute: () => rootRoute, path: '/p/$projectId/overview', component: OverviewPage })
-const milestonesRoute = createRoute({ getParentRoute: () => rootRoute, path: '/p/$projectId/milestones', component: MilestonesPage })
+const milestonesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/p/$projectId/milestones',
+  component: MilestonesPage,
+  validateSearch: (s: Record<string, unknown>): { m?: string } => ({ m: typeof s.m === 'string' ? s.m : undefined }),
+})
 
 const reportsRoute = createRoute({
   getParentRoute: () => rootRoute,

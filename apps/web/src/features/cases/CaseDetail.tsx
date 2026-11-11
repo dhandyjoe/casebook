@@ -1,5 +1,4 @@
-import { AlertTriangle, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Info, List, ListOrdered, Send, Undo2 } from 'lucide-react'
-import { useState } from 'react'
+import { AlertTriangle, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Info, List, ListOrdered, Send } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { CaseBlock } from '@/components/ui/CaseBlock'
 import { relativeTime } from '@/lib/time'
@@ -17,7 +16,6 @@ interface Props {
   onEdit: () => void
   onSubmit: () => void
   onApprove: () => void
-  onReturn: (note: string) => void
 }
 
 const iconBtn = 'flex size-[34px] cursor-pointer items-center justify-center rounded-md border border-border-strong bg-surface text-ink-secondary'
@@ -26,10 +24,8 @@ const dotColor: Record<string, string> = {
   edited_review: 'var(--cb-review-dot)', approved: 'var(--cb-approved-dot)', returned: 'var(--cb-priority-high)',
 }
 
-export function CaseDetail({ testCase: c, sectionPath, userName, userUid, onPrev, onNext, onEdit, onSubmit, onApprove, onReturn }: Props) {
+export function CaseDetail({ testCase: c, sectionPath, userName, userUid, onPrev, onNext, onEdit, onSubmit, onApprove }: Props) {
   const { t } = useTranslation()
-  const [rejecting, setRejecting] = useState(false)
-  const [reason, setReason] = useState('')
   const returned = pendingReturn(c)
   const dash = t('cases.detail.empty')
 
@@ -82,38 +78,10 @@ export function CaseDetail({ testCase: c, sectionPath, userName, userUid, onPrev
         {c.status === 'under_review' && (
           <div className="flex flex-col gap-3 rounded-lg border border-[var(--cb-retest-border)] bg-[var(--cb-pending-bg)] px-4 py-3.5">
             <div className="flex gap-2.5 text-[var(--cb-pending-fg)]"><Clock size={18} aria-hidden="true" className="mt-0.5 flex-none" /><span>{c.reviewer ? t('cases.detail.pendingBanner', { reviewer: c.reviewer.uid === userUid ? t('cases.detail.you') : c.reviewer.name }) : t('cases.detail.pendingBannerAny')}</span></div>
-            {canReview(c, userUid) && !rejecting && (
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={onApprove} className="flex h-10 cursor-pointer items-center gap-2 rounded-md border-0 bg-approved px-4 font-semibold text-white">
-                  <Check size={16} aria-hidden="true" />{t('cases.detail.approve')}
-                </button>
-                <button type="button" onClick={() => setRejecting(true)} className="flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-4 font-semibold text-ink-secondary">
-                  <Undo2 size={16} aria-hidden="true" />{t('cases.detail.returnToDraft')}
-                </button>
-              </div>
-            )}
-            {canReview(c, userUid) && rejecting && (
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="reason" className="font-medium text-ink">{t('cases.detail.reasonLabel')} <span className="text-danger-text">{t('cases.detail.required')}</span></label>
-                <textarea
-                  id="reason" rows={3} value={reason} autoFocus
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder={t('cases.detail.reasonPlaceholder')}
-                  className="resize-y rounded-md border border-border-input bg-surface px-3 py-2.5 text-ink"
-                />
-                <div className="mt-1 flex gap-2">
-                  <button
-                    type="button" disabled={!reason.trim()}
-                    onClick={() => { onReturn(reason); setRejecting(false); setReason('') }}
-                    className="h-10 cursor-pointer rounded-md border-0 bg-danger px-4 font-semibold text-white disabled:cursor-default disabled:bg-danger-disabled"
-                  >
-                    {t('cases.detail.returnToDraft')}
-                  </button>
-                  <button type="button" onClick={() => { setRejecting(false); setReason('') }} className="h-10 cursor-pointer rounded-md border border-border-strong bg-surface px-3.5 font-semibold text-ink">
-                    {t('cases.detail.cancel')}
-                  </button>
-                </div>
-              </div>
+            {canReview(c, userUid) && (
+              <button type="button" onClick={onApprove} className="flex h-10 cursor-pointer items-center gap-2 self-start rounded-md border-0 bg-approved px-4 font-semibold text-white">
+                <Check size={16} aria-hidden="true" />{t('cases.detail.approve')}
+              </button>
             )}
           </div>
         )}

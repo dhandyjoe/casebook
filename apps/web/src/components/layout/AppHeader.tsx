@@ -1,11 +1,11 @@
-import { BookCheck, Bell } from 'lucide-react'
+import { BookCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from '@tanstack/react-router'
 import { useAuth } from '@/features/auth/session'
 import type { Project } from '@/features/projects/api'
-import { ProjectSearch } from '@/features/projects/ProjectSearch'
 import { workspaceName } from '@/lib/workspaces'
 import { AccountMenu } from './AccountMenu'
+import { GlobalSearch } from './GlobalSearch'
 import { ProjectSwitcher } from './ProjectSwitcher'
 
 export function AppHeader({ project }: { project?: Project }) {
@@ -23,15 +23,8 @@ export function AppHeader({ project }: { project?: Project }) {
       <span aria-label={t('header.workspace')} className="rounded-md border border-header-line px-2.5 py-1 text-[13px] font-medium text-header-icon">{workspaceName(workspaceId)}</span>
       <div className="flex min-w-0 flex-1 basis-[260px] items-center justify-end gap-3">
         {project && <ProjectSwitcher project={project} />}
-        <ProjectSearch />
+        <GlobalSearch />
       </div>
-      <button
-        type="button"
-        aria-label={t('header.notifications')}
-        className="relative flex size-[38px] cursor-pointer items-center justify-center rounded-md border border-header-line bg-transparent text-header-icon"
-      >
-        <Bell size={18} aria-hidden="true" />
-      </button>
       <AccountMenu />
     </header>
   )

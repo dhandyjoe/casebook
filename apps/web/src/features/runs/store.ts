@@ -27,7 +27,6 @@ interface RunsState {
   createRun: (input: NewRun, who: string) => Run
   startRun: (runId: string) => void
   updateRun: (runId: string, patch: Pick<Run, 'name' | 'milestoneId' | 'planId' | 'description'>) => void
-  createPlan: (input: { name: string; milestoneId: string }) => Plan
   addResult: (runId: string, testId: string, input: ResultInput, who: string) => void
 }
 
@@ -58,11 +57,6 @@ export const useRunsStore = create<RunsState>()(
     startRun: (runId) => set((s) => ({ runs: s.runs.map((r) => (r.id === runId ? startRun(r, new Date()) : r)) })),
     updateRun: (runId, patch) =>
       set((s) => ({ runs: s.runs.map((r) => (r.id === runId ? { ...r, ...patch, name: patch.name.trim(), description: patch.description.trim() } : r)) })),
-    createPlan: ({ name, milestoneId }) => {
-      const plan: Plan = { id: `p${Date.now().toString(36)}`, name: name.trim(), milestoneId }
-      set((s) => ({ plans: [...s.plans, plan] }))
-      return plan
-    },
     addResult: (runId, testId, input, who) => {
       const { runs, tests } = get()
       const run = runs.find((r) => r.id === runId)

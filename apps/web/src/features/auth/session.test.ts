@@ -32,10 +32,18 @@ describe('initAuth', () => {
     expect(useAuth.getState()).toMatchObject({ ready: false, session: null })
   })
 
+  it('keeps the session set by Register when the profile was not written yet', async () => {
+    setCurrentUser(user)
+    useAuth.setState({ session: { uid: 'u1', name: 'Rina Saputra', initials: 'RS', workspaceId: 'alpha-qa' } })
+    vi.mocked(loadWorkspaceId).mockResolvedValue('')
+    await fire(user)
+    expect(useAuth.getState()).toMatchObject({ ready: true, session: { workspaceId: 'alpha-qa' } })
+  })
+
   it('clears cached data on sign-out', async () => {
-    queryClient.setQueryData(['pins', 'u1'], ['store'])
+    queryClient.setQueryData(['projects', 'alpha-qa'], [])
     await fire(null)
-    expect(queryClient.getQueryData(['pins', 'u1'])).toBeUndefined()
+    expect(queryClient.getQueryData(['projects', 'alpha-qa'])).toBeUndefined()
     expect(useAuth.getState()).toMatchObject({ ready: true, session: null })
   })
 })

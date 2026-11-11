@@ -1,4 +1,4 @@
-import { approve, ancestorIds, caseGroups, editCase, newCase, pendingReturn, returnToDraft, sectionPath, sectionWithDescendants, submitForReview, type CaseEdit, type Section, type TestCase } from './domain'
+import { approve, ancestorIds, caseGroups, editCase, newCase, pendingReturn, sectionPath, sectionWithDescendants, submitForReview, type CaseEdit, type Section, type TestCase } from './domain'
 
 const now = new Date('2026-11-06T10:00:00Z')
 const later = new Date('2026-11-06T11:00:00Z')
@@ -24,16 +24,10 @@ describe('case status flow (APR-01…04)', () => {
     expect(approve(draft(), 'Budi', later).status).toBe('draft')
     expect(approve(approved(), 'Budi', later).history).toHaveLength(approved().history.length)
   })
-  it('return to Draft needs a note (APR-03)', () => {
-    expect(returnToDraft(review(), 'Budi', '   ', later).status).toBe('under_review')
-    const c = returnToDraft(review(), 'Budi', ' Step 2 is unclear ', later)
-    expect(c.status).toBe('draft')
-    expect(c.history[0]).toMatchObject({ action: 'returned', note: 'Step 2 is unclear' })
-  })
-  it('editing main content of an Approved case sends it back to Under Review (APR-04)', () => {
+  it('editing main content of an Active case keeps it Active', () => {
     const c = editCase(approved(), { ...fields, steps: ['Open Checkout', 'Pick QRIS'] }, 'Sari', later)
-    expect(c.status).toBe('under_review')
-    expect(c.history[0]?.action).toBe('edited_review')
+    expect(c.status).toBe('active')
+    expect(c.history[0]?.action).toBe('edited')
   })
   it('editing minor fields of an Approved case keeps it Active', () => {
     const c = editCase(approved(), { ...fields, priority: 'High', refs: 'JIRA-9', type: 'UI' }, 'Sari', later)
@@ -45,8 +39,8 @@ describe('case status flow (APR-01…04)', () => {
     const c = draft()
     expect(editCase(c, fields, 'Sari', later)).toBe(c)
   })
-  it('shows the reviewer note only until the case is sent for review again', () => {
-    const returned = returnToDraft(review(), 'Budi', 'Fix step 2', later)
+  it('shows an older reviewer note only until the case is sent for review again', () => {
+    const returned: TestCase = { ...draft(), history: [{ who: 'Budi', action: 'returned', at: later.toISOString(), note: 'Fix step 2' }, ...draft().history] }
     expect(pendingReturn(returned)?.note).toBe('Fix step 2')
     expect(pendingReturn(submitForReview(returned, 'Sari', later))).toBeUndefined()
   })

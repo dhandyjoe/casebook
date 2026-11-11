@@ -19,14 +19,15 @@ interface Props {
   onAdd: (name: string, parentId: string | null) => void
 }
 
-const INDENT = 18
-const PAD = 6
-const CARET = 16
+export const INDENT = 18
+export const PAD = 6
+export const CARET = 16
 
-const rowBase = 'relative flex items-center gap-1 rounded-xs pr-2 text-ink'
-const rowState = (current: boolean) =>
+// Dipakai juga oleh pemilih section di dialog Move/Copy supaya tampilannya sama.
+export const rowBase = 'relative flex items-center gap-1 rounded-xs pr-2 text-ink'
+export const rowState = (current: boolean) =>
   current ? 'bg-accent font-semibold text-white' : 'hover:bg-page'
-const folderIcon = 'flex-none fill-[var(--cb-folder)] text-[var(--cb-folder-edge)]'
+export const folderIcon = 'flex-none fill-[var(--cb-folder)] text-[var(--cb-folder-edge)]'
 const nameBtn = 'flex min-w-0 flex-1 cursor-pointer items-center gap-2 border-0 bg-transparent py-[5px] text-left text-inherit'
 
 export function SectionTree({ sections, items, label, heading, allLabel, showCounts = true, selectedId, expanded, canWrite, onSelect, onToggle, onAdd }: Props) {

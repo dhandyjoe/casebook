@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/features/auth/session'
-import { createProject, listPinned, listProjects, setPinned } from './api'
+import { createProject, listProjects, setPinned, type Project } from './api'
 
 export function useProjects() {
   const workspaceId = useAuth((s) => s.session!.workspaceId)
@@ -19,28 +19,21 @@ export function useCreateProject() {
 }
 
 export function usePinned() {
-  const uid = useAuth((s) => s.session!.uid)
+  const workspaceId = useAuth((s) => s.session!.workspaceId)
   const client = useQueryClient()
-  const key = ['pins', uid]
-  const pins = useQuery({ queryKey: key, queryFn: () => listPinned(uid) })
-  const ids = pins.data ?? []
+  const key = ['projects', workspaceId]
 
   const change = useMutation({
-    mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) => setPinned(uid, id, pinned),
+    mutationFn: ({ id, pinned }: { id: string; pinned: boolean }) => setPinned(id, pinned),
     onMutate: async ({ id, pinned }) => {
       await client.cancelQueries({ queryKey: key })
-      const previous = client.getQueryData<string[]>(key)
-      const current = previous ?? []
-      client.setQueryData(key, pinned ? [...current, id] : current.filter((x) => x !== id))
+      const previous = client.getQueryData<Project[]>(key)
+      client.setQueryData(key, previous?.map((p) => (p.id === id ? { ...p, pinned } : p)))
       return { previous }
     },
     onError: (_error, _input, context) => client.setQueryData(key, context?.previous),
+    onSettled: () => client.invalidateQueries({ queryKey: key }),
   })
 
-  return {
-    ready: !pins.isPending,
-    failed: pins.isError || change.isError,
-    isPinned: (id: string) => ids.includes(id),
-    toggle: (id: string) => change.mutate({ id, pinned: !ids.includes(id) }),
-  }
+  return { failed: change.isError, toggle: (p: Project) => change.mutate({ id: p.id, pinned: !p.pinned }) }
 }

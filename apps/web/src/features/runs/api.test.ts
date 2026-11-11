@@ -1,7 +1,7 @@
 import { seed, stats, store, resetFirestore, ts } from '@/lib/fakeFirestore'
 import type { TestCase } from '@/features/cases/domain'
 import { emptyCounts } from './domain'
-import { addResult, createPlan, createRun, listPlans, deleteRun, getRun, listRecentTests, listResults, listRuns, listTests, removeCasesFromRuns, setRunCases, updateRun } from './api'
+import { addResult, createRun, listPlans, deleteRun, getRun, listRecentTests, listResults, listRuns, listTests, removeCasesFromRuns, setRunCases, updateRun } from './api'
 
 vi.mock('firebase/firestore', () => import('@/lib/fakeFirestore'))
 vi.unmock('@/features/runs/api')
@@ -42,10 +42,9 @@ describe('createRun', () => {
 })
 
 describe('plans', () => {
-  it('creates a trimmed plan and lists plans by name', async () => {
-    const plan = await createPlan('u1', 'p1', { name: '  Smoke ', milestoneId: 'm1' })
-    await createPlan('u1', 'p1', { name: 'Regression', milestoneId: 'm1' })
-    expect(store.get(`${P}/plans/${plan.id}`)).toMatchObject({ name: 'Smoke', milestoneId: 'm1', createdBy: 'u1', updatedBy: 'u1' })
+  it('lists existing plans by name', async () => {
+    seed(`${P}/plans/a`, { name: 'Smoke', milestoneId: 'm1' })
+    seed(`${P}/plans/b`, { name: 'Regression', milestoneId: 'm1' })
     expect((await listPlans('p1')).map((p) => p.name)).toEqual(['Regression', 'Smoke'])
   })
 

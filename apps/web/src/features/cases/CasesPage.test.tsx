@@ -62,7 +62,9 @@ describe('Test Cases', () => {
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Select C1041' }))
     await userEvent.click(screen.getByRole('button', { name: 'Copy' }))
     const dialog = await screen.findByRole('dialog', { name: 'Copy cases' })
-    await userEvent.selectOptions(within(dialog).getByLabelText('Destination section'), 'keranjang')
+    const tree = within(within(dialog).getByRole('radiogroup', { name: 'Destination section' }))
+    await userEvent.click(tree.getByRole('radio', { name: 'Cart' }))
+    expect(tree.getByRole('radio', { name: 'Cart' })).toHaveAttribute('aria-checked', 'true')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Copy 1 case' }))
     const { cases } = useCasesStore.getState()
     const copy = cases.find((c) => c.title === 'Pay with a valid credit card' && c.sectionId === 'keranjang')!
@@ -95,15 +97,10 @@ describe('Test Cases', () => {
     expect(useCasesStore.getState().cases.find((c) => c.id === 'C1046')?.status).toBe('active')
   })
 
-  it('returning to Draft requires a note, and shows it to the author', async () => {
+  it('an Under Review case offers Approve only, without Return to Draft', async () => {
     renderApp('/p/store/cases?section=pay&case=C1046')
-    await userEvent.click(await screen.findByRole('button', { name: 'Return to Draft' }))
-    const confirm = screen.getAllByRole('button', { name: 'Return to Draft' }).at(-1)!
-    expect(confirm).toBeDisabled()
-    await userEvent.type(screen.getByLabelText(/What needs fixing/), 'Add the expected error text')
-    await userEvent.click(confirm)
-    expect(await screen.findByText('“Add the expected error text”')).toBeInTheDocument()
-    expect(screen.getByText(/Returned to Draft by you/)).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Approve' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Return to Draft' })).not.toBeInTheDocument()
   })
 
   it('quick add creates a Draft in the open section and selects it', async () => {
@@ -156,6 +153,45 @@ describe('Test Cases', () => {
     expect(await screen.findByText(/Waiting for review by you/)).toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Approve' }))
     expect(useCasesStore.getState().cases.find((c) => c.id === 'C1050')?.status).toBe('active')
+  })
+
+  it('bulk bar: sends every selected Draft for review to the chosen reviewer', async () => {
+    renderApp('/p/store/cases?section=pay')
+    const drafts = useCasesStore.getState().cases.filter((c) => c.sectionId === 'pay' && c.status === 'draft').map((c) => c.id)
+    expect(drafts.length).toBeGreaterThan(1)
+    for (const id of drafts) await userEvent.click(await screen.findByRole('checkbox', { name: `Select ${id}` }))
+    const bar = within(screen.getByText(`${drafts.length} selected`).parentElement!)
+    await userEvent.click(bar.getByRole('button', { name: 'Send for review' }))
+    const review = await screen.findByRole('dialog', { name: 'Send for review' })
+    expect(within(review).getByText(`Choose who reviews these ${drafts.length} Draft cases.`)).toBeInTheDocument()
+    await userEvent.selectOptions(await within(review).findByRole('option', { name: 'Budi Santoso' }).then((o) => o.closest('select')!), 'u2')
+    await userEvent.click(within(review).getByRole('button', { name: 'Send for review' }))
+    const after = useCasesStore.getState().cases.filter((c) => drafts.includes(c.id))
+    expect(after.every((c) => c.status === 'under_review' && c.reviewer?.uid === 'u2')).toBe(true)
+    expect(screen.queryByText(/selected$/)).not.toBeInTheDocument()
+  })
+
+  it('bulk bar: sending a single selected Draft also clears the selection', async () => {
+    renderApp('/p/store/cases?section=pay')
+    const draft = useCasesStore.getState().cases.find((c) => c.sectionId === 'pay' && c.status === 'draft')!
+    await userEvent.click(await screen.findByRole('checkbox', { name: `Select ${draft.id}` }))
+    await userEvent.click(within(screen.getByText('1 selected').parentElement!).getByRole('button', { name: 'Send for review' }))
+    const review = await screen.findByRole('dialog', { name: 'Send for review' })
+    await within(review).findByRole('option', { name: 'Rina Saputra (you)' })
+    await userEvent.click(within(review).getByRole('button', { name: 'Send for review' }))
+    expect(useCasesStore.getState().cases.find((c) => c.id === draft.id)?.status).toBe('under_review')
+    expect(screen.queryByText('1 selected')).not.toBeInTheDocument()
+  })
+
+  it('bulk bar: Send for review is disabled as soon as one selected case is not Draft', async () => {
+    renderApp('/p/store/cases?section=pay')
+    const draft = useCasesStore.getState().cases.find((c) => c.sectionId === 'pay' && c.status === 'draft')!
+    await userEvent.click(await screen.findByRole('checkbox', { name: `Select ${draft.id}` }))
+    const button = () => within(screen.getByText(/selected$/).parentElement!).getByRole('button', { name: 'Send for review' })
+    expect(button()).toBeEnabled()
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Select C1041' })) // Active
+    expect(button()).toBeDisabled()
+    expect(button()).toHaveAttribute('title', expect.stringContaining('Only Draft cases'))
   })
 
   it('only the chosen reviewer sees Approve', async () => {
@@ -234,16 +270,15 @@ describe('Test Cases', () => {
     expect(screen.queryByText(/Waiting for review/)).not.toBeInTheDocument()
   })
 
-  it('editing the title of an Active case sends it back to Under Review', async () => {
+  it('editing the title of an Active case keeps it Active', async () => {
     renderApp('/p/store/cases?section=pay&case=C1041')
     await userEvent.click(await screen.findByRole('button', { name: 'Edit' }))
     const dialog = await screen.findByRole('dialog', { name: 'Edit test case' })
-    expect(within(dialog).getByText(/sends it back to Under Review/)).toBeInTheDocument()
     const title = within(dialog).getByLabelText(/^Title/)
     await userEvent.clear(title)
     await userEvent.type(title, 'Pay with a valid Visa card')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save changes' }))
-    expect(useCasesStore.getState().cases.find((c) => c.id === 'C1041')).toMatchObject({ title: 'Pay with a valid Visa card', status: 'under_review' })
+    expect(useCasesStore.getState().cases.find((c) => c.id === 'C1041')).toMatchObject({ title: 'Pay with a valid Visa card', status: 'active' })
   })
 
   it('bulk bar: approves only Under Review cases', async () => {
@@ -267,12 +302,37 @@ describe('Test Cases', () => {
     expect(useCasesStore.getState().cases.some((c) => c.id === 'C1050')).toBe(false)
   })
 
+  it('the destination picker can collapse, expand and search sections', async () => {
+    renderApp('/p/store/cases?section=pay')
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Select C1050' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Move' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Move cases' }))
+    expect(dialog.getByRole('radio', { name: 'Add to cart' })).toBeInTheDocument()
+    await userEvent.click(dialog.getByRole('button', { name: 'Collapse Cart' }))
+    expect(dialog.queryByRole('radio', { name: 'Add to cart' })).not.toBeInTheDocument()
+    await userEvent.click(dialog.getByRole('button', { name: 'Expand Cart' }))
+    expect(dialog.getByRole('radio', { name: 'Add to cart' })).toBeInTheDocument()
+
+    await userEvent.type(dialog.getByRole('searchbox', { name: 'Search sections' }), 'ADD TO')
+    // yang cocok tampil beserta induknya; section lain disembunyikan
+    expect(dialog.getAllByRole('radio').map((r) => r.textContent)).toEqual(['Cart', 'Add to cart'])
+    await userEvent.clear(dialog.getByRole('searchbox', { name: 'Search sections' }))
+    await userEvent.type(dialog.getByRole('searchbox', { name: 'Search sections' }), 'zzz')
+    expect(dialog.getByText('No sections match “zzz”.')).toBeInTheDocument()
+
+    // dibuka ulang: pencarian kosong lagi
+    await userEvent.click(dialog.getByRole('button', { name: 'Cancel' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Move' }))
+    expect(within(await screen.findByRole('dialog', { name: 'Move cases' })).getByRole('searchbox', { name: 'Search sections' })).toHaveValue('')
+  })
+
   it('bulk move sends cases to another section', async () => {
     renderApp('/p/store/cases?section=pay')
     await userEvent.click(await screen.findByRole('checkbox', { name: 'Select C1050' }))
     await userEvent.click(screen.getByRole('button', { name: 'Move' }))
     const dialog = await screen.findByRole('dialog', { name: 'Move cases' })
-    await userEvent.selectOptions(within(dialog).getByLabelText('Destination section'), 'Cart › Add to cart')
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Add to cart' }))
+    expect(within(dialog).getByText('Cart › Add to cart')).toBeInTheDocument()
     await userEvent.click(within(dialog).getByRole('button', { name: 'Move 1 case' }))
     expect(useCasesStore.getState().cases.find((c) => c.id === 'C1050')?.sectionId).toBe('tambah')
   })

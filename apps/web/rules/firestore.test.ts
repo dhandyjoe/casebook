@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { assertFails, assertSucceeds, initializeTestEnvironment, type RulesTestEnvironment } from '@firebase/rules-unit-testing'
-import { addDoc, arrayUnion, deleteDoc, doc, getDoc, getDocs, collection, increment, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
+import { addDoc, deleteDoc, doc, getDoc, getDocs, collection, increment, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
 
 let env: RulesTestEnvironment
@@ -32,6 +32,7 @@ describe('projects', () => {
     await assertSucceeds(getDocs(query(collection(bob, 'projects'), where('workspaceId', '==', 'alpha-qa'))))
     await assertSucceeds(setDoc(doc(bob, 'projects/p2'), project('bob')))
     await assertSucceeds(updateDoc(doc(bob, 'projects/p1'), { name: 'Renamed' }))
+    await assertSucceeds(updateDoc(doc(bob, 'projects/p1'), { pinned: true }))
     await assertSucceeds(deleteDoc(doc(bob, 'projects/p1')))
   })
 
@@ -60,6 +61,7 @@ describe('projects', () => {
     await assertFails(setDoc(doc(bob, 'projects/p2'), { ...project('bob'), color: 'red' }))
     await assertFails(setDoc(doc(bob, 'projects/p2'), { ...project('bob'), extra: true }))
     await assertFails(updateDoc(doc(bob, 'projects/p1'), { createdBy: 'bob' }))
+    await assertFails(updateDoc(doc(bob, 'projects/p1'), { pinned: 'yes' }))
   })
 })
 
@@ -72,6 +74,9 @@ describe('milestones', () => {
     await assertSucceeds(getDocs(collection(bob, 'projects/p1/milestones')))
     await assertSucceeds(setDoc(doc(bob, 'projects/p1/milestones/m2'), milestone('bob')))
     await assertSucceeds(updateDoc(doc(bob, path), { isCompleted: true, completedOn: '2026-11-10', updatedBy: 'bob', updatedAt: serverTimestamp() }))
+    // Completed terkunci: tidak bisa dibuka lagi atau diedit.
+    await assertFails(updateDoc(doc(bob, path), { isCompleted: false, completedOn: '', updatedBy: 'bob', updatedAt: serverTimestamp() }))
+    await assertFails(updateDoc(doc(bob, path), { name: 'Renamed', updatedBy: 'bob', updatedAt: serverTimestamp() }))
     await assertSucceeds(deleteDoc(doc(bob, path)))
   })
 
@@ -255,9 +260,7 @@ describe('daily', () => {
 })
 
 describe('users', () => {
-  it('a user can change their own pins only', async () => {
-    await assertSucceeds(updateDoc(doc(asUser('alice'), 'users/alice'), { pinnedProjectIds: arrayUnion('p1') }))
-    await assertFails(updateDoc(doc(asUser('bob'), 'users/alice'), { pinnedProjectIds: arrayUnion('p1') }))
+  it('a user cannot read another profile', async () => {
     await assertFails(getDoc(doc(asUser('bob'), 'users/alice')))
   })
 
@@ -266,10 +269,6 @@ describe('users', () => {
     await assertFails(setDoc(doc(asUser('carol'), 'users/carol'), { name: 'Carol', workspaceId: 'my-own' }))
     await assertFails(setDoc(doc(asUser('carol'), 'users/carol'), { name: 'Carol', role: 'lead' }))
     await assertFails(deleteDoc(doc(asUser('alice'), 'users/alice')))
-  })
-
-  it('a user without a profile can create one by pinning', async () => {
-    await assertSucceeds(setDoc(doc(asUser('carol'), 'users/carol'), { pinnedProjectIds: arrayUnion('p1') }, { merge: true }))
   })
 
   it('register can still create the profile', async () => {

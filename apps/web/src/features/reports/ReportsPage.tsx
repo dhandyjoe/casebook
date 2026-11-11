@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router'
-import { Download, Link2 } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ProjectShell } from '@/components/layout/ProjectShell'
@@ -21,7 +21,6 @@ export function ReportsPage() {
   const navigate = useNavigate({ from: '/p/$projectId/reports' })
   const project = useProject(projectId)
   const data = useReportData(projectId, template, id)
-  const [copied, setCopied] = useState(false)
   const [exporting, setExporting] = useState<'idle' | 'busy' | 'failed'>('idle')
 
   if (!project) return <p className="p-6">{t('cases.notFound')}</p>
@@ -39,15 +38,6 @@ export function ReportsPage() {
   const title = template === 'project' ? project.name : (scope?.name ?? '')
   const detail = (r: Row) => [r.runs === undefined ? '' : t('runs.count', { count: r.runs }), t('reports.rowDetail', r.counts)].filter(Boolean).join(' · ')
   const fmt = (n: number) => n.toLocaleString('en-US')
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setCopied(true)
-    } catch {
-      setCopied(false)
-    }
-  }
 
   const kpiCards = [
     { label: t('reports.kpiTotal'), value: fmt(k.total), note: t('reports.kpiTotalNote', { runs: t('runs.count', { count: data.runs.length }) }) },
@@ -118,13 +108,12 @@ export function ReportsPage() {
                   {data.allRuns.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
                 </select>
               )}
-              <button type="button" onClick={() => void copyLink()} className={ghost}><Link2 size={16} aria-hidden="true" />{t('reports.copyLink')}</button>
               <button type="button" onClick={() => void exportPdf()} disabled={missing || exporting === 'busy'} className="flex h-10 cursor-pointer items-center gap-2 rounded-lg border-0 bg-accent px-4 font-semibold text-white disabled:cursor-not-allowed disabled:bg-accent-disabled">
                 <Download size={16} aria-hidden="true" />{exporting === 'busy' ? t('reports.exporting') : t('reports.exportPdf')}
               </button>
             </div>
           </div>
-          <p role="status" className="m-0 -mt-3 min-h-5 text-[13px] text-ink-muted">{exporting === 'failed' ? t('reports.exportError') : copied ? t('reports.copied') : ''}</p>
+          <p role="status" className="m-0 -mt-3 min-h-5 text-[13px] text-ink-muted">{exporting === 'failed' ? t('reports.exportError') : ''}</p>
 
           {data.error ? (
             <div role="alert" className={`${card} flex flex-col items-center gap-3 text-center text-ink-muted`}>

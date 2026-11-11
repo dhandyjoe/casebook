@@ -2,13 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{db}/documents {
     function signedIn() { return request.auth != null; }
-    function validPins() {
-      return !('pinnedProjectIds' in request.resource.data)
-        || (request.resource.data.pinnedProjectIds is list && request.resource.data.pinnedProjectIds.size() <= 500);
-    }
     function validProject() {
       let p = request.resource.data;
-      return p.keys().hasOnly(['workspaceId', 'name', 'description', 'color', 'createdBy', 'createdAt', 'nextCaseNumber'])
+      return p.keys().hasOnly(['workspaceId', 'name', 'description', 'color', 'createdBy', 'createdAt', 'nextCaseNumber', 'pinned'])
+        && p.get('pinned', false) is bool
         && p.get('nextCaseNumber', 1) is int && p.get('nextCaseNumber', 1) >= 1
         && p.name is string && p.name.size() >= 1 && p.name.size() <= 120
         && p.description is string && p.description.size() <= 500
@@ -19,17 +16,13 @@ service cloud.firestore {
     function validWorkspace(id) { return id in ['alpha-qa', 'beta-squad', 'gamma-labs']; }
     function myWorkspace() { return get(/databases/$(db)/documents/users/$(request.auth.uid)).data.workspaceId; }
 
-    // Profil ringkas: menunjuk workspace milik user dan menyimpan pin-nya.
-    // workspaceId hanya diisi sekali saat Register; setelah itu tidak bisa diubah.
+    // Profil ringkas: menunjuk workspace milik user.
+    // Hanya ditulis sekali saat Register; setelah itu tidak bisa diubah. Pin ada di dokumen project.
     match /users/{uid} {
       allow read: if signedIn() && request.auth.uid == uid;
       allow create: if signedIn() && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name', 'workspaceId', 'pinnedProjectIds'])
-        && (!('workspaceId' in request.resource.data) || validWorkspace(request.resource.data.workspaceId))
-        && validPins();
-      allow update: if signedIn() && request.auth.uid == uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['pinnedProjectIds'])
-        && validPins();
+        && request.resource.data.keys().hasOnly(['name', 'workspaceId'])
+        && validWorkspace(request.resource.data.workspaceId);
     }
 
     // Semua user dalam satu workspace berbagi project; workspace lain tidak bisa membaca atau menulisnya.
@@ -65,7 +58,8 @@ service cloud.firestore {
         allow create: if signedIn() && inMyWorkspace() && validMilestone()
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.createdAt == request.time;
-        allow update: if signedIn() && inMyWorkspace() && validMilestone()
+        // Milestone Completed terkunci: tidak bisa diedit atau dibuka lagi.
+        allow update: if signedIn() && inMyWorkspace() && resource.data.isCompleted == false && validMilestone()
           && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.createdAt == resource.data.createdAt;
       }

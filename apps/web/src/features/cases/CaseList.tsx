@@ -43,9 +43,9 @@ export function CaseList({ groups, selectedId, checked, onToggle, onToggleAll, o
               <span className="rounded-full bg-[#DCE2EC] px-2 text-[11px] leading-[18px] font-semibold text-[var(--cb-blocked-fg)]">{cases.length}</span>
             </h3>
 
-            {cases.length > 0 && (
+            {(cases.length > 0 || onQuickAdd) && (
               <div className="overflow-hidden rounded-xl border border-border bg-surface">
-                <div className={`${grid} h-[38px] border-b border-border bg-surface-subtle text-xs font-semibold tracking-[0.04em] text-ink-muted uppercase`}>
+                {cases.length > 0 && <div className={`${grid} h-[38px] border-b border-border bg-surface-subtle text-xs font-semibold tracking-[0.04em] text-ink-muted uppercase`}>
                   <span>
                     <input type="checkbox" aria-label={t('cases.list.selectAll')} checked={allChecked} onChange={() => onToggleAll(cases.map((c) => c.id))} className="m-0 size-4 accent-accent" />
                   </span>
@@ -53,7 +53,7 @@ export function CaseList({ groups, selectedId, checked, onToggle, onToggleAll, o
                   <span>{t('cases.list.title')}</span>
                   <span>{t('cases.list.status')}</span>
                   <span />
-                </div>
+                </div>}
 
                 {cases.map((c) => {
                   const current = c.id === selectedId
@@ -62,7 +62,7 @@ export function CaseList({ groups, selectedId, checked, onToggle, onToggleAll, o
                       key={c.id}
                       ref={current ? selectedRow : undefined}
                       onClick={() => onOpen(c.id)}
-                      className={`${grid} cursor-pointer border-b border-border-subtle last:border-b-0 ${current ? 'bg-accent-tint-2 shadow-[inset_3px_0_0_var(--cb-accent)]' : checked.has(c.id) ? 'bg-row-checked' : 'bg-surface'}`}
+                      className={`${grid} cursor-pointer border-b border-border-subtle ${onQuickAdd ? '' : 'last:border-b-0'} ${current ? 'bg-accent-tint-2 shadow-[inset_3px_0_0_var(--cb-accent)]' : checked.has(c.id) ? 'bg-row-checked' : 'bg-surface'}`}
                     >
                       <span onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" aria-label={t('cases.list.select', { id: c.id })} checked={checked.has(c.id)} onChange={() => onToggle(c.id)} className="m-0 size-4 accent-accent" />
@@ -80,10 +80,9 @@ export function CaseList({ groups, selectedId, checked, onToggle, onToggleAll, o
                     </div>
                   )
                 })}
+                {onQuickAdd && <QuickAdd onAdd={(title) => onQuickAdd(title, section.id)} />}
               </div>
             )}
-
-            {onQuickAdd && <QuickAdd onAdd={(title) => onQuickAdd(title, section.id)} />}
           </section>
         )
       })}
@@ -95,8 +94,9 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
   const { t } = useTranslation()
   const [title, setTitle] = useState('')
   return (
-    <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-border-strong bg-surface py-2 pr-3 pl-5">
-      <Plus size={16} aria-hidden="true" className="flex-none text-ink-subtle" />
+    // Baris terakhir tabel: kolom grid sama dengan baris case supaya terasa satu daftar.
+    <div className={`${grid} bg-surface focus-within:bg-surface-subtle`}>
+      <Plus size={16} aria-hidden="true" className="text-ink-subtle" />
       <input
         type="text"
         value={title}
@@ -109,7 +109,7 @@ function QuickAdd({ onAdd }: { onAdd: (title: string) => void }) {
             setTitle('')
           }
         }}
-        className="h-9 min-w-0 flex-1 border-0 bg-transparent text-ink outline-none"
+        className="col-span-4 h-10 min-w-0 border-0 bg-transparent text-ink outline-none placeholder:text-ink-subtle"
       />
     </div>
   )

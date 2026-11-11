@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { authErrorKey, resetPassword, signIn } from './api'
@@ -9,6 +9,7 @@ const EMAIL = /^\S+@\S+\.\S+$/
 
 export function SignInForm() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
@@ -18,7 +19,10 @@ export function SignInForm() {
       ...(EMAIL.test(email) ? {} : { email: t('auth.errors.email') }),
       ...(password ? {} : { password: t('auth.errors.required') }),
     }),
-    ({ email, password }) => signIn(email.trim(), password, remember),
+    async ({ email, password }) => {
+      await signIn(email.trim(), password, remember)
+      await navigate({ to: '/' })
+    },
   )
   const [resetError, setResetError] = useState('')
 

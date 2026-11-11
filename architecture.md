@@ -111,8 +111,8 @@ Tidak ada server Firebase (Cloud Functions butuh Blaze). Logika bisnis dibagi ke
 | --- | --- | --- |
 | Register & pilih workspace | Client (`setDoc users/{uid}` berisi `workspaceId` dari daftar statis), dijaga rules | AUTH-01, WS-01 |
 | Undang anggota | MVP: link undangan disalin manual, penerima memilih workspace yang sama; P1: email otomatis lewat Worker | AUTH-04 |
-| Kirim untuk review / approve / kembalikan ke Draft | Client (batch: case + dokumen `reviews`); rules memastikan dokumen review ikut dibuat | APR-02/03 |
-| Edit case → kembali Under Review | Rules memaksa status `under_review` bila konten utama case Approved berubah; case Draft bebas diedit | APR-04 |
+| Kirim untuk review / approve | Client (batch: case + dokumen `reviews`); rules memastikan dokumen review ikut dibuat | APR-02/03 |
+| Edit case | Status tidak berubah saat diedit (case Active tetap Active) | APR-04 |
 | Nomor case C123 | Client transaction pada `projects.nextCaseNumber` | TC-02 |
 | Buat run + snapshot case | Client (batch per 500 test); run `draft` → `active` setelah semua batch selesai | RUN-01/02 |
 | Input hasil | Client (batch: result + status test + `runs.counts` + status run); rules memastikan run bukan `draft` | RUN-04/05 |
@@ -157,7 +157,8 @@ Firebase Authentication menangani identitas. Tidak ada role: semua akun setara. 
 
 **Model akses**
 
-- `users/{uid}.workspaceId` = `alpha-qa` | `beta-squad` | `gamma-labs`; juga menyimpan `pinnedProjectIds`.
+- `users/{uid}.workspaceId` = `alpha-qa` | `beta-squad` | `gamma-labs`; ditulis sekali saat Register.
+- `projects/{p}.pinned` = pin Dashboard yang berlaku untuk semua user workspace.
 - `projects/{p}.workspaceId` diisi saat project dibuat (harus sama dengan workspace pembuatnya) dan tidak bisa diubah.
 - Semua data lain (cases, runs, plans, milestones, hasil) ada di subkoleksi `projects/{p}/...` dan mengikuti workspace project.
 - Reviewer (approve / kembalikan ke Draft) adalah user mana pun di workspace yang sama; yang dijaga rules adalah dokumen review yang wajib ikut dibuat.
@@ -378,7 +379,7 @@ Tanpa Cloud Functions, setiap alur dijalankan client sebagai **batched write ata
 
 **A. Kirim untuk review, approve, dan kembalikan ke Draft**
 
-1. Case baru tersimpan sebagai Draft. Penulis mengubahnya ke Under Review dengan tombol Send for review (satu update; rules hanya mengizinkan draft → under\_review). Reviewer (user mana pun di workspace yang sama) melihat tombol Approve dan Return to Draft; Return to Draft membuka kolom catatan wajib (APR-03).
+1. Case baru tersimpan sebagai Draft. Penulis mengubahnya ke Under Review dengan tombol Send for review (satu update; rules hanya mengizinkan draft → under\_review). Reviewer (user mana pun di workspace yang sama) melihat tombol Approve. Return to Draft dihapus (Nov 2026).
 2. Client membuat satu batch: dokumen `cases/{c}/reviews/{rv}` (aksi, komentar, reviewer) + update case (`status`, `reviewedBy`, `reviewedAt = serverTimestamp`, `lastReviewId = rv`).
 3. Rules menolak batch bila user bukan anggota workspace project, transisi status tidak valid, atau dokumen review tidak ikut dibuat (Bagian 5).
 4. Notifikasi in-app untuk penulis case ikut ditulis di batch yang sama.

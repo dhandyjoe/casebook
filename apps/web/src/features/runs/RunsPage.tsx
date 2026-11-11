@@ -1,5 +1,5 @@
 import { useParams } from '@tanstack/react-router'
-import { Check, Layers, Plus } from 'lucide-react'
+import { Check, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ProjectShell } from '@/components/layout/ProjectShell'
@@ -7,7 +7,6 @@ import { useAuth } from '@/features/auth/session'
 import { useCasesStore } from '@/features/cases/store'
 import { useProject } from '@/features/projects/hooks'
 import { daysUntil, formatDate, relativeTime } from '@/lib/time'
-import { PlanDialog } from './PlanDialog'
 import { ProjectRuns } from './ProjectRuns'
 import { MilestoneSection, PlanRow, RunFilterBar, RunRow, type Filter } from './RunRow'
 import { RunDialog } from './RunDialog'
@@ -32,7 +31,7 @@ export function RunsPage() {
   const sections = useCasesStore((s) => s.sections)
 
   const [filter, setFilter] = useState<Filter>('all')
-  const [dialog, setDialog] = useState<'run' | 'plan' | null>(null)
+  const [dialog, setDialog] = useState<'run' | null>(null)
 
   const visible = runs.filter((r) => filter === 'all' || r.status === filter)
   const count = (s: RunStatus) => runs.filter((r) => r.status === s).length
@@ -71,9 +70,6 @@ export function RunsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="button" aria-haspopup="dialog" onClick={() => setDialog('plan')} className="flex h-10 cursor-pointer items-center gap-2 rounded-md border border-border-strong bg-surface px-3.5 font-semibold text-ink">
-              <Layers size={16} aria-hidden="true" />{t('runs.list.addPlan')}
-            </button>
             <button type="button" aria-haspopup="dialog" onClick={() => setDialog('run')} className="flex h-10 cursor-pointer items-center gap-2 rounded-md border-0 bg-accent px-4 font-semibold text-white hover:bg-accent-hover">
               <Plus size={16} strokeWidth={2.2} aria-hidden="true" />{t('runs.list.addRun')}
             </button>
@@ -131,10 +127,6 @@ export function RunsPage() {
         open={dialog === 'run'} projectName={project.name} milestones={milestones} cases={cases} sections={sections}
         me={{ uid: session.uid, name: session.name }} onClose={() => setDialog(null)} onSave={() => undefined}
         onCreate={(input, assigneeName) => { store.createRun({ ...input, assignee: initialsOf(assigneeName) }, session.initials); setFilter('all'); setDialog(null) }}
-      />
-      <PlanDialog
-        open={dialog === 'plan'} projectName={project.name} milestones={milestones} onClose={() => setDialog(null)}
-        onCreate={(input) => { store.createPlan(input); setFilter('all'); setDialog(null) }}
       />
     </ProjectShell>
   )

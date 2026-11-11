@@ -1,6 +1,6 @@
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useParams, useSearch } from '@tanstack/react-router'
 import { CalendarDays, Check, Flag, Plus, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Dialog } from '@/components/ui/Dialog'
 import { ProjectShell } from '@/components/layout/ProjectShell'
@@ -21,15 +21,22 @@ const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0)
 export function MilestonesPage() {
   const { t } = useTranslation()
   const { projectId } = useParams({ from: '/p/$projectId/milestones' })
+  // ?m= dari global search: pilih milestone itu; tab All supaya yang Completed juga terlihat.
+  const { m: target } = useSearch({ from: '/p/$projectId/milestones' })
   const project = useProject(projectId)
   const query = useMilestones(projectId)
   const allRuns = useRuns(projectId).data
   const { create, update, remove } = useMilestoneActions(projectId)
-  const [tab, setTab] = useState<Tab>('open')
-  const [picked, setPicked] = useState<string>()
+  const [tab, setTab] = useState<Tab>(target ? 'all' : 'open')
+  const [picked, setPicked] = useState(target)
   // undefined = tertutup, null = milestone baru, objek = edit
   const [form, setForm] = useState<Milestone | null | undefined>(undefined)
   const [deleting, setDeleting] = useState<Milestone | null>(null)
+  useEffect(() => {
+    if (!target) return
+    setPicked(target)
+    setTab('all')
+  }, [target])
 
   if (!project) return <p className="p-6">{t('cases.notFound')}</p>
 
@@ -48,7 +55,7 @@ export function MilestonesPage() {
   }
   const saving = form ? update : create
   const add = () => { saving.reset(); setForm(null) }
-  const toggleDone = (m: Milestone) => update.mutate({ id: m.id, patch: { isCompleted: !m.isCompleted } })
+  const complete = (m: Milestone) => update.mutate({ id: m.id, patch: { isCompleted: true } })
 
   const dates = (m: Milestone, state: MilestoneState) => milestoneDates(t, m, state)
   const summary = (counts: ReturnType<typeof sumCounts>, runs: Run[]) => {
@@ -129,11 +136,15 @@ export function MilestonesPage() {
             </div>
             {cur && (
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => { saving.reset(); setForm(cur.m) }} className={outline}>{t('milestones.edit')}</button>
-                <button type="button" onClick={() => toggleDone(cur.m)} className={outline}>
-                  {!cur.m.isCompleted && <Check size={15} strokeWidth={2.2} aria-hidden="true" />}
-                  {cur.m.isCompleted ? t('milestones.reopen') : t('milestones.complete')}
-                </button>
+                {/* Milestone Completed terkunci: tidak bisa diedit atau dibuka lagi. */}
+                {!cur.m.isCompleted && (
+                  <>
+                    <button type="button" onClick={() => { saving.reset(); setForm(cur.m) }} className={outline}>{t('milestones.edit')}</button>
+                    <button type="button" onClick={() => complete(cur.m)} className={outline}>
+                      <Check size={15} strokeWidth={2.2} aria-hidden="true" />{t('milestones.complete')}
+                    </button>
+                  </>
+                )}
                 <button type="button" disabled={cur.runs.length > 0} title={cur.runs.length ? t('milestones.inUse') : undefined} onClick={() => { remove.reset(); setDeleting(cur.m) }} className={outline}>{t('milestones.delete')}</button>
               </div>
             )}

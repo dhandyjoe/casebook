@@ -53,8 +53,6 @@ export interface Section {
 
 export type CaseEdit = Pick<TestCase, 'title' | 'sectionId' | 'type' | 'priority' | 'refs' | 'preconditions' | 'steps' | 'expected'>
 
-const CONTENT_FIELDS: readonly string[] = ['title', 'preconditions', 'steps', 'expected']
-
 const entry = (who: string, action: HistoryAction, now: Date, note?: string): HistoryEntry =>
   note ? { who, action, note, at: now.toISOString() } : { who, action, at: now.toISOString() }
 
@@ -98,22 +96,10 @@ export function approve(c: TestCase, who: string, now: Date): TestCase {
   return c.status === 'under_review' ? touch(c, { status: 'active' }, entry(who, 'approved', now)) : c
 }
 
-/** APR-03: catatan perbaikan wajib. */
-export function returnToDraft(c: TestCase, who: string, note: string, now: Date): TestCase {
-  const text = note.trim()
-  return c.status === 'under_review' && text ? touch(c, { status: 'draft' }, entry(who, 'returned', now, text)) : c
-}
-
-/** APR-04: edit konten utama case Active mengembalikannya ke Under Review; edit field minor tidak. */
+/** Edit tidak mengubah status: case Active tetap Active. */
 export function editCase(c: TestCase, edit: CaseEdit, who: string, now: Date): TestCase {
-  const changed = (Object.keys(edit) as (keyof CaseEdit)[]).filter((k) => JSON.stringify(edit[k]) !== JSON.stringify(c[k]))
-  if (changed.length === 0) return c
-  const backToReview = c.status === 'active' && changed.some((k) => CONTENT_FIELDS.includes(k))
-  return touch(
-    c,
-    { ...edit, status: backToReview ? 'under_review' : c.status },
-    entry(who, backToReview ? 'edited_review' : 'edited', now),
-  )
+  const changed = (Object.keys(edit) as (keyof CaseEdit)[]).some((k) => JSON.stringify(edit[k]) !== JSON.stringify(c[k]))
+  return changed ? touch(c, edit, entry(who, 'edited', now)) : c
 }
 
 /** Catatan reviewer yang masih berlaku untuk case Draft: ada 'returned' tanpa 'submitted' sesudahnya. */
